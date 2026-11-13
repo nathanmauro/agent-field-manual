@@ -191,8 +191,9 @@ ranked options with the print-only option included and wait for the pick.
 
 Write the stage and engine tables in terms of the disciplines and engines the installed clients
 actually provide, and keep one table for both engines rather than one per client. Start the
-Reach For / Not table from an audit of real sessions, not from a wish list, and put the
-retirement check on the calendar when a row is added.
+Reach For / Not table from an audit of real sessions, not from a wish list, and put a two-week
+retirement check on the calendar when a row is added: if a tool or skill gets zero uses two weeks
+after receiving an explicit trigger rule, fix the trigger or take it off the active surface.
 
 State the work mode once when it changes, and pass it explicitly to every delegate.
 
