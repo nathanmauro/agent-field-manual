@@ -59,6 +59,7 @@ Last reviewed 2026-11-10.
 
 - A [supervised Codex turn](examples/supervised-delegation/), recorded while this repo was being updated: the task, the turn record, the failed envelope with exit code 11, the inspection that chose not to retry, and the same fault reproduced with the public adapter on a smoke probe.
 - A [council review transcript](examples/council-review/transcript.md): one context pack, three independent opinions, anonymized cross-review, a recorded decision.
+- A [voice session with the desk brain](docs/voice-bosun.md#a-real-exchange): eight spoken turns, each Claude turn timed, with 17 days of call numbers and what failed.
 - A [fleet round board](examples/fleet-round/board.txt) and the [handoff](examples/durable-handoff/handoff.md) a session leaves behind.
 
 ## The core loop
@@ -89,6 +90,7 @@ Both engines conduct. Each row names the Claude-led and the Codex-led path.
 | Settle a consequential decision   | [Council review](docs/concepts/council-review.md)                                                                                                                                         | [`council`](skills/council/SKILL.md) (`$council`)                                                                           |
 | Run a whole session               | [Agentic operating system](docs/concepts/agentic-operating-system.md)                                                                                                                     | [Codex-led session](docs/workflows/codex-led-session.md) (`$baton`, `/prompts:reseed`, `/prompts:handoff`, `/prompts:ship`) |
 | Leave work in a trustworthy state | [Closeout and handoff](docs/workflows/closeout-and-handoff.md)                                                                                                                            | Same closeout, captured from Codex                                                                                          |
+| Run the desk by voice             | [Voice ops](docs/voice-bosun.md): a dispatcher brain session that reads every tab and relays spoken words · [`bosun-brain`](templates/bosun-brain/CLAUDE.md)                              |                                                                                                                             |
 
 <p align="center">
   <a href="docs/diagrams.md"><strong>Explore the visual workflow gallery →</strong></a>
@@ -133,6 +135,7 @@ agentic-workflows/
 - [`project-spec.md`](templates/project-spec.md): durable intent plus live round state, decisions, and deferred work.
 - [`HANDOFF.md`](templates/HANDOFF.md): the exact state a future session needs, including the authorization it carries.
 - [`skill-registry.md`](templates/skill-registry.md): the contract a skill meets before it earns prompt surface.
+- [`bosun-brain/`](templates/bosun-brain/CLAUDE.md): the project guide and voice rules for a dispatcher session that operates the desk and does no project work itself.
 - [`local-adapters.example.json`](templates/local-adapters.example.json): clean boundaries for memory, notifications, session launchers, workers, and policy rendering.
 
 ### Working patterns
@@ -194,5 +197,5 @@ The kit is opinionated and will keep changing when my practice does. Copy what h
 
 <p align="center">
   <strong>Conduct the work. Verify the result. Leave a trail.</strong><br>
-  <sub>MIT licensed · built for adaptation · last reviewed 2026-11-10</sub>
+  <sub>By <a href="https://nathanmauro.io">Nathan Mauro</a> · MIT licensed · built for adaptation · last reviewed 2026-11-12</sub>
 </p>

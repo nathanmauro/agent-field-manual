@@ -5,6 +5,33 @@ All notable changes to this repo are recorded here. The format follows
 Entries before 2026-10-31 were backfilled from the git history. On 2026-11-01 the history was
 squashed into a single sanitized root commit, so this file is now the change record.
 
+## 2026-11-12
+
+Voice ops chapter: the dispatcher brain pattern from daily voice use, with numbers and a real
+transcript.
+
+### Added
+
+- [`docs/voice-bosun.md`](docs/voice-bosun.md): an open-mic voice call into one Claude Code
+  session that is told to do no project work, reads every session on the desk, relays spoken
+  words into the session that owns the work, and spawns tabs for new work. Includes 17 days of
+  call and turn numbers counted from the event log, what failed, a sanitized eight-turn
+  transcript, what leaves the machine, a threat model, and a `desk` verb table for Herdr and tmux.
+  The voice front end is a swappable part; the metered OpenAI Realtime API is the supported way to
+  copy it.
+- [`templates/bosun-brain/`](templates/bosun-brain/CLAUDE.md): the brain's project guide and its
+  voice rules, generalized from the private originals. Only the read verbs and `desk away` are
+  allowlisted; sends need the owner to name the session and the words or a yes, and changes to
+  shared state need the owner's words.
+
+### Changed
+
+- [`scripts/prose-placeholders.py`](scripts/prose-placeholders.py) skips
+  `<!-- site:... -->` pull markers, so a doc can mark the summary a site build reads. Any other
+  HTML comment is still reported, and a placeholder beside a marker still fails.
+- [`README.md`](README.md) links the chapter from "Pick your workflow", "See one run", and the
+  copyable foundations, and the footer links the author site, nathanmauro.io.
+
 ## 2026-11-10
 
 November stack refresh: stateless specialist routing, `herdr-core` session placement, read-only

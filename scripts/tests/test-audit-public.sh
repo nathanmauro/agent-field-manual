@@ -89,11 +89,18 @@ expect_placeholder_rc() {
 printf 'Fill in the %s later.\n' '<value>' > "$TMP/match.md"
 printf 'Nothing to see; `<repo>` is code.\n' > "$TMP/clean.md"
 printf 'hello \xff there\n' > "$TMP/bad-bytes.md"
+printf '%s Two sentences. %s\n' '<!-- site:summary -->' '<!-- /site:summary -->' \
+  > "$TMP/site-marker.md"
+printf '%s Fill in %s.\n' '<!-- site:summary -->' '<value>' > "$TMP/site-marker-hole.md"
+printf 'Hidden %s here.\n' '<!-- note to self -->' > "$TMP/other-comment.md"
 
 expect_placeholder_rc "placeholder found" 0 "$TMP/match.md"
 expect_placeholder_rc "clean prose" 1 "$TMP/clean.md"
 expect_placeholder_rc "missing root is an error" 2 "$TMP/missing-dir"
 expect_placeholder_rc "invalid utf-8 is an error" 2 "$TMP/bad-bytes.md"
+expect_placeholder_rc "site markers are clean" 1 "$TMP/site-marker.md"
+expect_placeholder_rc "placeholder beside a site marker" 0 "$TMP/site-marker-hole.md"
+expect_placeholder_rc "other html comment still flagged" 0 "$TMP/other-comment.md"
 
 set +e
 AUDIT_PUBLIC_SELFTEST=1 \

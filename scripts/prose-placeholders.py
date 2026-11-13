@@ -23,6 +23,9 @@ PLACEHOLDER = re.compile(
 )
 FENCE = re.compile(r"^\s*(```|~~~)")
 INLINE_CODE = re.compile(r"`[^`]*`")
+# Pull markers a site build reads, e.g. <!-- site:summary --> ... <!-- /site:summary -->. Only
+# this exact shape is skipped; any other HTML comment still counts as a placeholder.
+SITE_MARKER = re.compile(r"<!--\s*/?site:[a-z-]+\s*-->")
 
 
 class ScanError(Exception):
@@ -51,7 +54,8 @@ def prose_lines(path: Path):
             continue
         if in_fence:
             continue
-        yield number, INLINE_CODE.sub("", line)
+        prose = INLINE_CODE.sub("", line)
+        yield number, SITE_MARKER.sub("", prose)
 
 
 def main(argv: list[str]) -> int:
