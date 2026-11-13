@@ -5,6 +5,30 @@ All notable changes to this repo are recorded here. The format follows
 Entries before 2026-10-31 were backfilled from the git history. On 2026-11-01 the history was
 squashed into a single sanitized root commit, so this file is now the change record.
 
+## 2026-11-13
+
+Sanitized drift sync across fleet effort defaults, council runner isolation, supervised-delegation
+transports, and skill-registry templates.
+
+### Changed
+
+- [`skills/codex-fleet/launch.sh`](skills/codex-fleet/launch.sh),
+  [`skills/codex-fleet/SKILL.md`](skills/codex-fleet/SKILL.md),
+  [`docs/workflows/codex-from-claude.md`](docs/workflows/codex-from-claude.md), and
+  [`scripts/codex-runner`](scripts/codex-runner): default `CODEX_EFFORT` for unattended fleet
+  rounds is now `high` on the standard service tier (matching `recon-workflow.js`), overridable per
+  run; `codex-runner` notes that interactive `herdr-core` (`herdr-app` + `hc`) implements the same
+  four-verb supervision contract over rollout JSONL.
+- [`skills/council/SKILL.md`](skills/council/SKILL.md) and
+  [`docs/concepts/council-review.md`](docs/concepts/council-review.md): document child-process
+  isolation (temporary run directory as `cwd` and scrubbed parent-session `CLAUDECODE`,
+  `CLAUDE_CODE_*`, and `CODEX_*` variables except `CODEX_HOME`) and environment-overridable model
+  and effort knobs.
+- [`docs/kindred-systems.md`](docs/kindred-systems.md) and
+  [`templates/skill-registry.md`](templates/skill-registry.md): record how locally authored shared
+  skills coexist beside vendored upstream copies, and add compact inventory and model-pin hygiene
+  sections to the skill registry template.
+
 ## 2026-11-12
 
 Voice ops chapter: the dispatcher brain pattern from daily voice use, with numbers and a real

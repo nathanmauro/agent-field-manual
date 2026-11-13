@@ -95,7 +95,12 @@ table below records what changed.
 
 The rest of the upstream set (its router, `wayfinder`, `triage`, its own `handoff` and
 `code-review`, and others) was not adopted: this manual's own skills and the clients' built-in
-commands already cover what they do.
+commands already cover what they do. Locally authored cross-client skills (such as stateless
+specialist oracle queries, prompt compilation with fork detection, and explicit voice-desk
+orchestration) live alongside the eleven vendored copies in the same shared skill directory so one
+installer links the pack across clients, while the provenance ledger separates upstream-vendored
+files from local skills whose authority and validation live in the
+[skill registry](../templates/skill-registry.md).
 
 ## Adding to this page
 

@@ -15,9 +15,9 @@
 #
 # Model knobs (all env-overridable):
 #   CODEX_MODEL   no default; when unset, the Codex client default model applies.
-#   CODEX_EFFORT  reasoning effort; defaults to xhigh because unattended fleet
-#                 rounds run at the highest effort tier. Set it empty to defer to
-#                 the client default.
+#   CODEX_EFFORT  reasoning effort; defaults to high across project tiers.
+#                 Set it empty to defer to the client default, or override
+#                 when a round warrants extra search depth.
 #   CODEX_TIER    service tier; no default, so the client default (standard)
 #                 applies. Unattended rounds should stay on the standard tier.
 # State dir: explicit CODEX_GOALS_DIR > current symlink > legacy flat dir.
@@ -60,7 +60,7 @@ RUN_TAG="$(printf '%s' "$G" | cksum | awk '{print $1}')"
 SESS="codex-${NAME_TAG}-${NAME_HASH}-${RUN_TAG}"
 
 MODEL="${CODEX_MODEL:-}"
-EFFORT="${CODEX_EFFORT-xhigh}"
+EFFORT="${CODEX_EFFORT-high}"
 TIER="${CODEX_TIER:-}"
 
 if ! command -v codex > /dev/null 2>&1; then

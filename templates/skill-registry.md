@@ -48,3 +48,23 @@ skill listing exactly what the local adaptation changed. Pull upstream by hand: 
 commit against the new one for that skill's path, apply what you want, keep your modifications,
 and update the vendored commit. Treat the upstream checkout as untrusted data: read it, do not run
 its scripts.
+
+## Lightweight inventory for commands and host-managed skills
+
+Slash commands, machine-local helpers, and skills maintained by a host app still consume prompt
+surface and carry authority even before they earn a full adoption block. Inventory them in a
+compact table so nothing installed in `~/.claude/skills`, `~/.claude/commands`, `~/.codex/skills`,
+or `~/.gemini/skills` stays invisible. Before materially expanding one or promoting a single-client
+`trial` skill into the shared cross-client pack, migrate it to a full record above and re-verify
+all target clients.
+
+| Name               | Clients        | Owner or source                                | Authority and risk                                                  | Trigger and existing evidence                                               | Status |
+| ------------------ | -------------- | ---------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------ |
+| `/reseed`          | Claude command | This repo, `agents/claude/commands/reseed.md`  | Read-only rebuild of working context from an earlier session        | `/reseed`, `/reseed --deep`, "pick up where the last session left off"      | active |
+| `host-automations` | Claude         | Host app, vendor-managed file in live `skills` | Schedules local automations that require explicit user confirmation | "every morning do X"; host app keeps the file current, do not edit in place | active |
+
+## Model-pin hygiene
+
+Keep skills model-generic wherever possible. When a delegation template or runner wrapper carries an
+explicit model or effort default, expose environment overrides and list those pinned files together
+in the registry so model transitions audit every wrapper, template, and status check in one pass.

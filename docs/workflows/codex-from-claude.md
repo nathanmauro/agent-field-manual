@@ -93,9 +93,9 @@ the first may still be working.
 ### Service tier and effort
 
 A conductor is waiting on every turn in this workflow, so delegated turns use the fast service tier
-at high reasoning effort. Unattended fleet rounds are the opposite case and use the standard tier
-at `xhigh` (see [Codex fleet](codex-fleet.md)). The model itself is whatever the configured Codex
-model is; this document does not pin one.
+at high reasoning effort. Unattended fleet rounds are the opposite case and stay on the standard
+tier at `high` effort by default, overridable via `CODEX_EFFORT` (see [Codex fleet](codex-fleet.md)).
+The model itself is whatever the configured Codex model is; this document does not pin one.
 
 ## Outputs
 

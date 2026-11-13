@@ -246,15 +246,15 @@ Skills are model-generic. [`launch.sh`](launch.sh) exposes three env knobs and p
 model:
 
 - `CODEX_MODEL` has no default; when unset, the Codex client default model applies.
-- `CODEX_EFFORT` defaults to the highest reasoning effort tier, because unattended fleet
-  rounds depend on it. Set it empty to defer to the client default.
+- `CODEX_EFFORT` defaults to `high` across project tiers. Set it empty to defer to the client
+  default, or override it when a specific round warrants higher search depth.
 - `CODEX_TIER` has no default, so the client default (standard) service tier applies.
 
 The tier rule: attended delegation (a human watching one worker, as in
 `codex-workflow-hybrid`) uses the fast service tier at high reasoning effort; unattended
-fleet rounds use the standard tier at the highest effort, since speed is wasted on a run
-nobody is watching. The launch line prints the effective values, with `client-default` for
-any knob left unset.
+fleet rounds stay on the standard service tier at high effort, since fast-tier burn is wasted
+on a run nobody is watching. The launch line prints the effective values, with `client-default`
+for any knob left unset.
 
 ## Tiers and the board
 

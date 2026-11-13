@@ -72,9 +72,14 @@ skips the review round.
    ```
 
    The runner is adapter-specific: `council-runner` is a command the user provides on `PATH` or
-   names in `COUNCIL_RUNNER`. Poll every 30 to 60 seconds with `tail -5 "$LOG"` until the final
-   `RUN_DIR=<path>` line appears (`grep -E '^RUN_DIR=' "$LOG"`). If the process exits without
-   it, report the log tail verbatim and stop.
+   names in `COUNCIL_RUNNER`. A runner implementation should execute each voice CLI with the
+   temporary run directory as its working directory and scrub parent-session environment variables
+   (`CLAUDECODE`, `CLAUDE_CODE_*`, and `CODEX_*` except `CODEX_HOME`) so child calls neither nest
+   into the active session nor inherit repo-local `CLAUDE.md` or `AGENTS.md` context; expose any
+   model or effort overrides via environment knobs rather than hardcoded pins. Poll every 30 to 60
+   seconds with `tail -5 "$LOG"` until the final `RUN_DIR=<path>` line appears
+   (`grep -E '^RUN_DIR=' "$LOG"`). If the process exits without it, report the log tail verbatim
+   and stop.
 
 4. **Read artifacts** from `RUN_DIR`: `manifest.json` first (which voices completed, failed, or
    were skipped; never invent a missing voice's opinion), then

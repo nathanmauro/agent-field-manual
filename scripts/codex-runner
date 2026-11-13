@@ -2,12 +2,14 @@
 """Reference adapter for the supervised-delegation contract over headless Codex.
 
 Verbs: start, send, watch, stop (plus status and list). See
-docs/concepts/supervised-delegation.md for the contract and the exit-code table.
+docs/concepts/supervised-delegation.md for the contract and the exit-code table. Interactive
+multiplexer transports such as herdr-core (herdr-app + hc) can implement the same four verbs
+when a visible pane is preferred while keeping Codex rollout JSONL as the data plane.
 
 No model is pinned here. --model, --effort, and --tier fall back to CODEX_MODEL, CODEX_EFFORT,
 and CODEX_TIER; when those are unset too, the Codex client default from the user's own
 configuration applies. Attended delegation uses the fast service tier at high effort;
-unattended fleet rounds use the standard tier at the highest effort.
+unattended fleet rounds stay on the standard service tier at high effort by default.
 """
 
 import argparse
