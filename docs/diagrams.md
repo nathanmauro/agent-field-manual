@@ -1,8 +1,8 @@
 # Workflow Diagrams
 
 These Mermaid diagrams show the operating patterns in this repository at a glance. They describe
-reusable workflow shapes for two engines, Claude Code and Codex, under one policy. They are
-intentionally public-safe: no private machine wiring, accounts, or project inventories.
+reusable workflow shapes for three clients, Claude Code, Antigravity, and Codex, under one
+policy. They are intentionally public-safe: no private machine wiring, accounts, or project inventories.
 
 ## Agentic Operating System
 
@@ -12,6 +12,7 @@ flowchart TB
   Intent --> Instructions["Project instructions"]
   subgraph Engines["Coding agents"]
     Claude["Claude Code"] <-->|"delegate with an authorization record"| Codex["Codex"]
+    Swarm["Antigravity swarm"] -->|"hand deep builds back"| Claude
   end
   Policy["Shared portable policy"] --> Engines
   Instructions --> Engines
@@ -29,8 +30,8 @@ flowchart TB
 
 The model is only one part of the system. Instructions, specs, tools, gates, verification, and
 handoffs turn isolated agent runs into an inspectable engineering workflow. One shared policy
-reaches both engines, and authorization travels with delegated work as a quoted record; see
-[One Policy, Two Engines](#one-policy-two-engines) and
+reaches every client, and authorization travels with delegated work as a quoted record; see
+[One Policy, Three Clients](#one-policy-three-clients) and
 [Claude And Codex Delegation](#claude-and-codex-delegation).
 
 ## Fleet Round
@@ -213,7 +214,7 @@ and commits. The full contract and exit-code table are in
 [Supervised delegation](concepts/supervised-delegation.md); a public reference adapter lives at
 [`scripts/codex-runner`](../scripts/codex-runner).
 
-## One Policy, Two Engines
+## One Policy, Three Clients
 
 ```mermaid
 flowchart LR
@@ -234,7 +235,7 @@ are written once and reach every client from the same source. Skills are linked,
 an improvement made in one client is live in the others. A multi-ring drift check fails when a
 rendered block no longer matches its source or when skill links, hooks, docs, or continuity records
 fall out of sync. See
-[One policy, two engines](concepts/one-policy-two-engines.md),
+[One policy, three clients](concepts/one-policy-two-engines.md),
 [`templates/portable-policy.md`](../templates/portable-policy.md), and
 [`templates/skill-registry.md`](../templates/skill-registry.md).
 

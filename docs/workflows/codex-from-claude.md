@@ -127,7 +127,7 @@ committing; a worker's summary and a reviewer's opinion are inputs, not proof.
 
 - [Supervised delegation](../concepts/supervised-delegation.md), the channel contract
 - [Authorization provenance](../concepts/authorization-provenance.md)
-- [One policy, two engines](../concepts/one-policy-two-engines.md)
+- [One policy, three clients](../concepts/one-policy-two-engines.md)
 - [`skills/codex-workflow-hybrid`](../../skills/codex-workflow-hybrid/SKILL.md)
 - [Claude from Codex](claude-from-codex.md), the same split with the roles reversed
 - [Codex-led session](codex-led-session.md)

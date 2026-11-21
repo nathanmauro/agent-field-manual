@@ -62,6 +62,13 @@ nearest project guide override this when they are more specific.
   alternatives and reasons, and a handoff breadcrumb (repo, branch, SHA, verification, next action)
   whenever stopping with open work, dirty state, rejected paths, or live-system effects that git
   history alone would lose.
+- Open tentacles: anything started and not finished in a session (a worktree, an unpushed
+  branch, a parked tangent, a half-done ticket) gets a broadcast through the memory adapter's
+  notice primitive: kind `tentacle`, a stable key, and a follow-up time, cleared when the work
+  lands or is dropped. Kind `hazard` marks live locks and dirty trees; kind `invariant` marks
+  standing project facts. A periodic sweep gathers stale tentacles, unmerged worktrees, and
+  issues stuck in progress into one list for the human. Where the adapter has no broadcast
+  primitive yet, leave a comment on the issue naming the open thread instead.
 
 ### Iteration mode
 

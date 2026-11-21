@@ -6,7 +6,7 @@ Use this workflow when Codex is the coordinator for a whole working session: it 
 decides how the work should run, delegates the parts another engine does better, and closes the
 session so the next one can resume quickly. It is the counterpart to a Claude-led session. Either
 engine can lead; the same operating policy governs both
-(see [One policy, two engines](../concepts/one-policy-two-engines.md)).
+(see [One policy, three clients](../concepts/one-policy-two-engines.md)).
 
 ## Inputs
 
@@ -145,5 +145,5 @@ retry handle.
 - [Claude from Codex](claude-from-codex.md)
 - [Closeout and handoff](closeout-and-handoff.md)
 - [Handoffs and continuity](../concepts/handoffs-and-continuity.md)
-- [One policy, two engines](../concepts/one-policy-two-engines.md)
+- [One policy, three clients](../concepts/one-policy-two-engines.md)
 - [`templates/portable-policy.md`](../../templates/portable-policy.md)

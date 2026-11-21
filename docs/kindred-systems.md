@@ -70,9 +70,9 @@ On 2026-10-06 eleven of his skills were vendored from `mattpocock/skills` at com
 [`6fd9479`](https://github.com/mattpocock/skills/tree/6fd947921b935b7e1e69293a200400f0fdd5c15f)
 (MIT, licence kept in full beside the copies) and adapted to run under both Claude Code and Codex
 from one tracked source, as described in
-[One Policy, Two Engines](concepts/one-policy-two-engines.md). The import commit holds the upstream
-files byte for byte, so every local change is a plain diff against it, and a per-skill ledger
-records what changed. Upstream is pulled by hand: fetched outside the repo, read as untrusted data,
+[One Policy, Three Clients](concepts/one-policy-two-engines.md). The import commit holds the
+upstream files byte for byte, so every local change is a plain diff against it, and a per-skill
+ledger records what changed. Upstream is pulled by hand: fetched outside the repo, read as untrusted data,
 diffed one skill at a time, and merged manually. It is never auto-installed, and the earlier plugin
 build was disabled so no skill loads twice. The eleven share one adoption record kept to the
 [skill registry](../templates/skill-registry.md) contract. The vendored copies, their licence, and

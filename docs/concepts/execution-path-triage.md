@@ -50,6 +50,7 @@ specified, or is not engineering work, matches nothing and goes straight to the 
 | Needs read-only investigation, then a plan the human approves           | plan first       |
 | Well-specified single-surface change, a small ticket                    | direct build     |
 | Multi-file build across disjoint surfaces                               | delegated build  |
+| Many independent workers across repos, the browser, or workspace ops    | native swarm     |
 | A finished diff                                                         | review           |
 
 A stateless oracle query invokes a deep-reasoning specialist model in a zero-tool, single-turn
@@ -64,8 +65,32 @@ separate verifier contexts that never saw the implementer's reasoning, with a st
 adversarial oracle available on demand for high-stakes forks. By default this stays inside one
 model family (for example, an isolated same-vendor workflow); cross-vendor delegation to Codex
 over a [supervised channel](supervised-delegation.md) remains available as an explicit opt-in when
-second-vendor review is requested. Either engine can run the gate; the question is the same across
+second-vendor review is requested. Any client can run the gate; the question is the same across
 clients, only the invocation syntax differs.
+
+A native swarm hands wide, shallow work to a client whose coordinator posts tasks to a shared
+board and whose workers claim and report on them. It fits cross-repository sweeps, status checks,
+cleanups, browser work, and workspace or cloud-console operations. Workers that edit get their
+own worktrees or run serially, and a worker that finds deep single-repository engineering hands
+it back to the primary builder as a delegated build. See [Native Swarms](native-swarms.md).
+
+### The engine split
+
+The engine table answers "what kind of work is this"; the engine split answers "which client
+runs that kind". It is set from usage data, not preference, and revisited when the data moves.
+The current split is two primaries and one standby:
+
+| Lane                                                        | Client                                        |
+| ----------------------------------------------------------- | --------------------------------------------- |
+| Deep single-repo builds, orchestration, delegated builds    | Primary builder                               |
+| First-principles derivation, strategy, adversarial red-team | Stateless oracle (same vendor as the builder) |
+| Native swarms, cross-repo ops, browser, workspace and cloud | Swarm client                                  |
+| Cross-vendor verification and the council's outside seat    | Second vendor, on request                     |
+
+The split moved once already, and the data moved it. Two days after the second vendor became
+opt-in its daily session count fell to zero and stayed there; over the following two days the
+swarm client ran 54 conversations, and 22 of its 56 most recent ones used the native swarm board.
+The concrete clients behind each lane are in the README's dated stack block.
 
 ### The presentation
 
@@ -117,21 +142,22 @@ handoff or a subagent itself.
 Beyond the gate, a short table of defaults covers the situations where habit picks the wrong
 tool. It was derived from an audit of actual agent sessions, not written in advance.
 
-| Situation                       | Reach for                        | Not                        |
-| ------------------------------- | -------------------------------- | -------------------------- |
-| Recurring check while working   | A session-scoped loop            | Polling by hand            |
-| Recurring job, no live steering | A scheduled routine              | Doing it when remembered   |
-| Hard derivation or red-team     | A stateless zero-tool oracle     | Running a 2x model on bash |
-| Answer spread across many files | An explore subagent              | Reading them all inline    |
-| Build with independent parts    | Orchestrated delegated builds    | One long serial session    |
-| Parallel agents that edit files | Separate worktrees, or serialize | Two writers, one tree      |
-| Costly-if-wrong decision        | A [council](council-review.md)   | One model's opinion        |
-| A branch is done                | Code review, then behavior check | Ad hoc checking            |
-| Cleanup PR about to open        | A simplification pass            | The first working version  |
-| Session ending with open work   | A handoff, one next action       | A quiet trail-off          |
-| Resuming after a gap            | One anchor noun up front         | A bare "what's next"       |
-| Where did this leave off?       | Query the memory adapter first   | Human as memory bus        |
-| Has this turn finished?         | Ask the runner by turn id        | Reading timestamps or logs |
+| Situation                       | Reach for                          | Not                        |
+| ------------------------------- | ---------------------------------- | -------------------------- |
+| Recurring check while working   | A session-scoped loop              | Polling by hand            |
+| Recurring job, no live steering | A scheduled routine                | Doing it when remembered   |
+| Hard derivation or red-team     | A stateless zero-tool oracle       | Running a 2x model on bash |
+| Answer spread across many files | An explore subagent                | Reading them all inline    |
+| Build with independent parts    | An isolated delegated build        | One long serial session    |
+| Fan-out across repos or systems | A [native swarm](native-swarms.md) | A hand-built worker bus    |
+| Parallel agents that edit files | Separate worktrees, or serialize   | Two writers, one tree      |
+| Costly-if-wrong decision        | A [council](council-review.md)     | One model's opinion        |
+| A branch is done                | Code review, then behavior check   | Ad hoc checking            |
+| Cleanup PR about to open        | A simplification pass              | The first working version  |
+| Session ending with open work   | A handoff, one next action         | A quiet trail-off          |
+| Resuming after a gap            | One anchor noun up front           | A bare "what's next"       |
+| Where did this leave off?       | Query the memory adapter first     | Human as memory bus        |
+| Has this turn finished?         | Ask the runner by turn id          | Reading timestamps or logs |
 
 ### Hard rules
 
@@ -153,6 +179,13 @@ tool. It was derived from an audit of actual agent sessions, not written in adva
 The table is re-audited on a cadence. A tool that gets a written trigger rule and still has zero
 uses two weeks later has either the wrong trigger or no remaining job. Fix the trigger or take
 the tool off the active surface. A row nobody uses is noise that every agent still has to read.
+
+An engine change starts the clock too. The cross-vendor engine went opt-in on 2026-11-16, so the
+tools built mainly to drive it joined an existing watch item on a list reviewed on 2026-11-30:
+the [multi-project fleet](fleet-execution.md), the shell-supervised worker bus behind
+[supervised delegation](supervised-delegation.md), and a launcher that sprays queued tasks into
+parallel sessions. The cross-vendor council seat stays regardless; whatever else went unused
+moves to archived or reference status.
 
 ## Work Modes
 
@@ -193,7 +226,7 @@ human asks "what's the best way to do this?" about. Keep the gate in the main lo
 ranked options with the print-only option included and wait for the pick.
 
 Write the stage and engine tables in terms of the disciplines and engines the installed clients
-actually provide, and keep one table for both engines rather than one per client. Start the
+actually provide, and keep one table for every client rather than one per client. Start the
 Reach For / Not table from an audit of real sessions, not from a wish list, and put a two-week
 retirement check on the calendar when a row is added: if a tool or skill gets zero uses two weeks
 after receiving an explicit trigger rule, fix the trigger or take it off the active surface.
@@ -215,6 +248,9 @@ allowed to touch.
 - [Supervised Delegation](supervised-delegation.md): the channel a delegated build runs over.
 - [Council Review](council-review.md): the path for decisions that are costly if wrong.
 - [Handoffs and Continuity](handoffs-and-continuity.md): what a phase-boundary handoff writes.
-- [One Policy, Two Engines](one-policy-two-engines.md): the shared rules both engines triage under.
+- [Native Swarms](native-swarms.md): board-coordinated fan-out and the isolation rule.
+- [`isolated-workflow`](../../skills/isolated-workflow/SKILL.md): the default delegated build.
+- [One Policy, Three Clients](one-policy-two-engines.md): the shared rules every client triages
+  under.
 - [Fleet Execution](fleet-execution.md): PLAN, DO, and FULL_AUTO across several projects.
 - [Codex from Claude](../workflows/codex-from-claude.md): the delegated-build workflow.

@@ -21,7 +21,7 @@ the project intent, current round, acceptance bar, decisions, and deferred work.
 at meaningful stopping points, especially when a branch is left dirty or live systems were
 touched. When more than one client runs against the same projects, the cross-project rules live
 in one shared policy rendered into each client; see
-[one policy, two engines](one-policy-two-engines.md).
+[one policy, three clients](one-policy-two-engines.md).
 
 Separate authority from execution. Delegating a task never expands its mutation or publication
 authority, and the authorization travels with the work as a quoted record (see
@@ -63,6 +63,6 @@ especially dangerous because they change the world without a reviewable record.
 - [`templates/local-adapters.example.json`](../../templates/local-adapters.example.json)
 - [`templates/portable-policy.md`](../../templates/portable-policy.md)
 - [`templates/skill-registry.md`](../../templates/skill-registry.md)
-- [One policy, two engines](one-policy-two-engines.md)
+- [One policy, three clients](one-policy-two-engines.md)
 - [Supervised delegation](supervised-delegation.md)
 - [Authorization provenance](authorization-provenance.md)
