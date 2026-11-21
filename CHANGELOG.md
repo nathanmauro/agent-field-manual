@@ -7,9 +7,41 @@ squashed into a single sanitized root commit, so this file is now the change rec
 
 ## 2026-11-21
 
-Sanitized drift sync for worktree isolation placement and isolated same-vendor delegation defaults.
+The stack moves from two engines to a 2+1 split: Claude as primary builder and orchestrator with
+a stateless specialist oracle, Gemini in Antigravity as primary for native swarms and
+cross-repo operations, and Codex as an opt-in cross-vendor verifier. Also a sanitized drift sync
+for worktree placement and isolated same-vendor delegation defaults.
+
+### Added
+
+- [`skills/isolated-workflow/`](skills/isolated-workflow/SKILL.md): the default delegated build
+  as a public skill and workflow template. A fresh-context implementer, separate-context
+  functional and editorial reviewers, a fix pass for real issues only, a quoted authorization
+  block, and a main loop that owns git. The template is syntax-checked by the public audit.
+- [`docs/concepts/native-swarms.md`](docs/concepts/native-swarms.md): board-coordinated swarms
+  compared with shell-supervised worker buses, the lane each engine owns, the hand-back rule for
+  deep single-repo builds, and the isolation rule that editing workers never share a checkout.
 
 ### Changed
+
+- [`README.md`](README.md): new subtitle and badge, and a rewritten current-stack block for the
+  2+1 engine split, isolated builds by default, native swarms, open-work broadcasts, and the
+  2026-11-30 retirement review. The workflow picker, pattern list, and field-manual table link
+  the new skill and concept. Last reviewed 2026-11-21.
+- [`docs/concepts/one-policy-two-engines.md`](docs/concepts/one-policy-two-engines.md): retitled
+  "One Policy, Three Clients". One rendered policy now reaches three clients, and lane rules
+  (what each client owns and when it hands off) live outside the managed block. The filename is
+  kept so existing links resolve; link text across the docs follows the new title.
+- [`docs/concepts/execution-path-triage.md`](docs/concepts/execution-path-triage.md): a
+  native-swarm engine row, an engine-split table set from usage data, an isolated-build and a
+  fan-out row in Reach For / Not, and a dated retirement watch list for the tools that mainly
+  drove the cross-vendor engine.
+- [`templates/portable-policy.md`](templates/portable-policy.md): an open-tentacles rule. Started
+  but unfinished work gets a broadcast through the memory adapter's notice primitive (kinds
+  `tentacle`, `hazard`, `invariant`) with a follow-up time, and a periodic sweep collects stale
+  ones.
+- [`docs/diagrams.md`](docs/diagrams.md): the operating-system diagram shows the swarm client
+  handing deep builds back to the builder.
 
 - [`templates/portable-policy.md`](templates/portable-policy.md): add the shadow-tree worktree
   location rule (keep the main projects directory 1:1 with real repositories, place agent/feature

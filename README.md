@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="docs/assets/agentic-workflows-hero.svg" alt="Agentic Workflows: a drafting-plate diagram of a project's trajectory (intent, spec, delegate, verify, hand off) up to a present head node with projected futures — how Claude Code and Codex run as one engineering team" width="100%">
+  <img src="docs/assets/agentic-workflows-hero.svg" alt="Agentic Workflows: a drafting-plate diagram of a project's trajectory (intent, spec, delegate, verify, hand off) up to a present head node with projected futures — how Claude, Gemini swarms, and Codex run as one engineering operating system" width="100%">
 </p>
 
 <h1 align="center">Agentic Workflows</h1>
 
 <p align="center">
-  <strong>How I run Claude Code and Codex as one engineering team.</strong><br>
+  <strong>How I run Claude, Gemini swarms, and Codex as one multi-engine operating system.</strong><br>
   The workflows, gates, and handoff formats I use every day, exported from my private control plane and sanitized into a copyable kit.
 </p>
 
@@ -24,7 +24,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="MIT licensed" src="https://img.shields.io/badge/license-MIT-11100E?style=flat-square&labelColor=FF5A36&color=11100E"></a>
   <a href="https://github.com/nathanmauro/agentic-workflows/actions/workflows/audit.yml"><img alt="Public audit" src="https://github.com/nathanmauro/agentic-workflows/actions/workflows/audit.yml/badge.svg"></a>
-  <img alt="Works with Codex and Claude" src="https://img.shields.io/badge/agents-Codex_·_Claude-11100E?style=flat-square&labelColor=EDE7DB&color=11100E">
+  <img alt="Works with Claude, Antigravity, and Codex" src="https://img.shields.io/badge/agents-Claude_·_Antigravity_·_Codex-11100E?style=flat-square&labelColor=EDE7DB&color=11100E">
   <img alt="Docs, templates, examples, and runnable skills" src="https://img.shields.io/badge/kit-docs_·_templates_·_skills-11100E?style=flat-square&labelColor=CBFF4A&color=11100E">
 </p>
 
@@ -34,23 +34,26 @@
 
 Coding agents rarely fail because they cannot produce a plausible diff. They fail because the work around the model is improvised: context is scattered, mutation boundaries are fuzzy, verification is optional, and the next session has to reconstruct everything from scratch.
 
-This repo is the control layer I run around two agents. It is process, not product: the systems these patterns write to live in their own repos, starting with [Black Box](https://github.com/nathanmauro/black-box), the shared memory both agents record decisions and handoffs into. It was built with the workflows it documents. Claude Code and Codex draft and verify; I scope, review, and own every commit.
+This repo is the control layer I run around three agent clients. It is process, not product: the systems these patterns write to live in their own repos, starting with [Black Box](https://github.com/nathanmauro/black-box), the shared memory every agent records decisions and handoffs into. It was built with the workflows it documents. Claude Code builds and verifies, Antigravity swarms fan out, Codex cross-checks when asked; I scope, review, and own every commit.
 
 ## Current stack (as of November 2026)
 
-- **Two session engines, one policy, and a stateless specialist oracle.** Claude Code (**Opus 5.5** at `medium` effort by default, `high` when needed; **Sonnet 5.5 / Haiku 5.5** for mechanical lookups and edits) and Codex (**gpt-6-astra** at `medium` effort interactively; **gpt-6.1-sol** for delegated builds) conduct, implement, and cross-verify. The model that did not write the code verifies it. **Fable 5.2** is queried as a stateless, zero-tool First-Principles Oracle (`physics`, `strategy`, `architecture`, `redteam`) rather than an interactive session driver: stripping tool/MCP schemas and compliance boilerplate cuts its quota burn by ~80% and stops it from hedging on unmeasured parameters. One [shared operating policy](templates/portable-policy.md) governs every client: Claude Code imports it, Codex and Gemini carry it as a hash-marked rendered block, and a multi-ring drift check fails when policy hashes, skill symlinks, hooks, docs, or decision records fall out of sync.
-- **Either engine can lead.** Interactive sessions run as spaces and tabs in [Herdr](https://herdr.dev) (`herdr-app` for window placement, `hc` for terminal lifecycle and inspection) with Remote Control on, carrying the human's authorization with the task. Claude hands Codex bounded turns over a [supervised channel](docs/concepts/supervised-delegation.md): a turn record per send, a one-line result envelope, and an exit code the conductor acts on instead of guessing from silence.
-- **Where state lives.** Interactive sessions run in Herdr spaces, one per checkout, agents as tabs; unattended fleet workers run in run-scoped tmux sessions. Linear holds execution. Obsidian holds durable notes and parked ideas. [Black Box](https://github.com/nathanmauro/black-box) holds decisions, handoffs, and projections across clients over MCP.
-- **Cost, startup hygiene, and backpressure.** Interactive drivers default to `medium` effort; attended Codex delegation runs on the fast tier at `high` effort; unattended fleet rounds run on the standard tier at `xhigh`. Unused global MCP servers and zero-use skills are pruned on a regular audit cadence to save thousands of prompt tokens per turn, and autonomous background queues carry explicit ready-backlog caps so agent output never outruns human review.
+- **Two primaries, one standby, one policy.** The engine split is set from local session data, not preference; the current 2+1 split dates from 2026-11-21, after 14 days of counts. **Anthropic is the primary builder and orchestrator:** Claude Code (**Opus 5.5** at `medium` effort by default, `high` when needed; **Sonnet 5.5 / Haiku 5.5** for mechanical lookups and edits) conducts sessions and runs delegated builds. **Gemini is primary for fan-out:** **Gemini 4 Neon** in Antigravity runs [native swarms](docs/concepts/native-swarms.md) (board-coordinated workers) for cross-repo ops, browser work, and Google Workspace and cloud operations. **Codex is an opt-in cross-vendor verifier:** since 2026-11-16 it runs only when I name it (**gpt-6.1-sol** for delegated builds), and it keeps the outside seat on the [council](docs/concepts/council-review.md). One [shared operating policy](templates/portable-policy.md) governs every client: Claude Code imports it, Codex and Antigravity carry it as a hash-marked rendered block, and a multi-ring drift check fails when policy hashes, skill symlinks, hooks, docs, or decision records fall out of sync. See [One policy, three clients](docs/concepts/one-policy-two-engines.md).
+- **A stateless specialist oracle.** **Fable 5.2** (and **Mythos 5.2**) are queried as stateless, zero-tool First-Principles Oracles (`physics`, `strategy`, `architecture`, `redteam`) rather than interactive session drivers: stripping tool/MCP schemas and compliance boilerplate cuts quota burn by ~80% and stops hedging on unmeasured parameters. The oracle is also the outside reader for high-stakes diffs now that the default build stays inside one vendor.
+- **Isolated builds by default, swarms for breadth.** A delegated build runs as an [isolated workflow](skills/isolated-workflow/SKILL.md): a fresh-context implementer, separate reviewers that never saw its reasoning, a fix pass for real issues only, and a main loop that owns git. Wide, shallow work goes to a swarm instead, and a swarm worker that hits deep single-repo engineering hands it back to Claude Code. Either way, workers that edit never share a checkout: each gets a worktree under a dedicated shadow tree, or they run serially. Codex is still reachable over a [supervised channel](docs/concepts/supervised-delegation.md) when cross-vendor review is worth it.
+- **Where state lives.** Interactive sessions run as spaces and tabs in [Herdr](https://herdr.dev) (`herdr-app` for window placement, `hc` for terminal lifecycle and inspection) with Remote Control on, one space per checkout, Claude and Antigravity sessions as tabs. Linear holds execution. Obsidian holds durable notes and parked ideas. [Black Box](https://github.com/nathanmauro/black-box) holds decisions, handoffs, and projections across clients over MCP, and anything started but unfinished gets an open-work broadcast with a follow-up time that a periodic sweep collects.
+- **Cost, startup hygiene, and retirement.** Interactive drivers default to `medium` effort. Unused global MCP servers and zero-use skills are pruned on a regular audit cadence, and autonomous background queues carry explicit ready-backlog caps so agent output never outruns human review. Three tools are on a retirement review for 2026-11-30, two weeks after Codex went opt-in: the Codex [fleet](skills/codex-fleet/SKILL.md), the shell-supervised worker bus, and a session-spray launcher. The council's cross-vendor seat stays.
 
-Last reviewed 2026-11-10.
+Last reviewed 2026-11-21.
 
 ## What it demonstrates
 
+- **Isolated delegation.** A fresh-context implementer, separate-context reviewers, a fix pass for real issues only, and a main loop that owns git, inside one model family, with a stateless oracle as the outside reader on demand. [Skill](skills/isolated-workflow/SKILL.md) · [template](skills/isolated-workflow/templates/workflow.js)
+- **Native swarms with one isolation rule.** Board-coordinated fan-out for cross-repo ops, browser, and workspace work, a hand-back rule for deep single-repo builds, and editing workers that never share a checkout. [Concept](docs/concepts/native-swarms.md)
 - **Supervised delegation.** A worker channel with send/watch separation, a result envelope, bounded attention, and a sandbox that keeps `.git` read-only so the human stays sole author. [Concept](docs/concepts/supervised-delegation.md) · [public adapter](scripts/codex-runner) · [skill](skills/codex-workflow-hybrid/SKILL.md)
 - **Stateless specialist isolation.** Separating multi-turn tool orchestration from zero-tool first-principles reasoning (`explore` mode and stateless oracle calls), so deep derivations and adversarial red-teams do not re-bill 100k+ tokens of tool schemas per command. [Concept](docs/concepts/execution-path-triage.md)
 - **Consent that survives handoffs.** The human's exact words, their source, the destination, the payload, and the limits travel with every delegated task to the final reviewed tool call. [Concept](docs/concepts/authorization-provenance.md)
-- **Policy as code.** One policy source, one skill source, imported by Claude Code and rendered into Codex and Gemini as hash-marked blocks, backed by a multi-ring drift audit across policy, skill links, hooks, docs, and continuity records. [Concept](docs/concepts/one-policy-two-engines.md) · [template](templates/portable-policy.md) · [skill registry](templates/skill-registry.md)
+- **Policy as code.** One policy source, one skill source, imported by Claude Code and rendered into Codex and Antigravity as hash-marked blocks, backed by a multi-ring drift audit across policy, skill links, hooks, docs, and continuity records. [Concept](docs/concepts/one-policy-two-engines.md) · [template](templates/portable-policy.md) · [skill registry](templates/skill-registry.md)
 - **Fail-closed release gates and queue backpressure.** A fleet that merges its own green PRs only through a helper that re-checks mode, round, repo identity, PR head, and danger hints before and after CI, plus backlog caps that pause unattended generation when unreviewed output piles up. [Skill](skills/codex-fleet/SKILL.md) · [workflow](docs/workflows/codex-fleet.md)
 - **Continuity that compounds without write-only bloat.** Compact handoffs written when state would be lost by `git log` alone, typed decisions with rejected alternatives, closeout handoffs reused directly as session summaries without an extra model call, and projections that assemble into a project trajectory. [Concept](docs/concepts/handoffs-and-continuity.md) · [trajectory](docs/concepts/project-trajectory.md)
 - **Choosing the lean path.** A main-loop triage gate and an anti-rabbit-hole gate that pick the stage, engine, and work mode (`prototype`, `sdlc`, or read-only `explore`) before anything heavy runs, after one default-to-heavy run burned 11.75M tokens for no diff. [Concept](docs/concepts/execution-path-triage.md)
@@ -80,17 +83,18 @@ INTENT  →  SPEC  →  DELEGATE  →  VERIFY  →  HAND OFF
 
 ## Pick your workflow
 
-Both engines conduct. Each row names the Claude-led and the Codex-led path.
+Claude leads by default and Codex can still lead a session. Each row names both paths where they exist; fan-out across repositories goes to an Antigravity swarm.
 
-| Need                              | Claude-led                                                                                                                                                                                | Codex-led                                                                                                                   |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Decide how to work before working | [Execution-path triage](docs/concepts/execution-path-triage.md) (`/route`, `/work-mode`)                                                                                                  | Same gate, `$route` and `$work-mode`                                                                                        |
-| Delegate a bounded build          | [Codex from Claude](docs/workflows/codex-from-claude.md): [`codex-workflow-hybrid`](skills/codex-workflow-hybrid/SKILL.md) · [`codex-workflow-lean`](skills/codex-workflow-lean/SKILL.md) | [Claude from Codex](docs/workflows/claude-from-codex.md): [`claude-remote`](skills/claude-remote/SKILL.md)                  |
-| Advance several repos at once     | [Codex fleet](docs/workflows/codex-fleet.md): Claude conducts, one Codex session per project                                                                                              |                                                                                                                             |
-| Settle a consequential decision   | [Council review](docs/concepts/council-review.md)                                                                                                                                         | [`council`](skills/council/SKILL.md) (`$council`)                                                                           |
-| Run a whole session               | [Agentic operating system](docs/concepts/agentic-operating-system.md)                                                                                                                     | [Codex-led session](docs/workflows/codex-led-session.md) (`$baton`, `/prompts:reseed`, `/prompts:handoff`, `/prompts:ship`) |
-| Leave work in a trustworthy state | [Closeout and handoff](docs/workflows/closeout-and-handoff.md)                                                                                                                            | Same closeout, captured from Codex                                                                                          |
-| Run the desk by voice             | [Voice ops](docs/voice-bosun.md): a dispatcher brain session that reads every tab and relays spoken words · [`bosun-brain`](templates/bosun-brain/CLAUDE.md)                              |                                                                                                                             |
+| Need                              | Claude-led                                                                                                                                                                                                                                                                              | Codex-led                                                                                                                   |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Decide how to work before working | [Execution-path triage](docs/concepts/execution-path-triage.md) (`/route`, `/work-mode`)                                                                                                                                                                                                | Same gate, `$route` and `$work-mode`                                                                                        |
+| Delegate a bounded build          | [`isolated-workflow`](skills/isolated-workflow/SKILL.md) (default) · cross-vendor on request: [Codex from Claude](docs/workflows/codex-from-claude.md), [`codex-workflow-hybrid`](skills/codex-workflow-hybrid/SKILL.md) · [`codex-workflow-lean`](skills/codex-workflow-lean/SKILL.md) | [Claude from Codex](docs/workflows/claude-from-codex.md): [`claude-remote`](skills/claude-remote/SKILL.md)                  |
+| Fan out across repos or systems   | [Native swarms](docs/concepts/native-swarms.md): an Antigravity board coordinates the workers; deep builds come back to Claude                                                                                                                                                          |                                                                                                                             |
+| Advance several repos at once     | [Codex fleet](docs/workflows/codex-fleet.md): Claude conducts, one Codex session per project (on retirement review)                                                                                                                                                                     |                                                                                                                             |
+| Settle a consequential decision   | [Council review](docs/concepts/council-review.md)                                                                                                                                                                                                                                       | [`council`](skills/council/SKILL.md) (`$council`)                                                                           |
+| Run a whole session               | [Agentic operating system](docs/concepts/agentic-operating-system.md)                                                                                                                                                                                                                   | [Codex-led session](docs/workflows/codex-led-session.md) (`$baton`, `/prompts:reseed`, `/prompts:handoff`, `/prompts:ship`) |
+| Leave work in a trustworthy state | [Closeout and handoff](docs/workflows/closeout-and-handoff.md)                                                                                                                                                                                                                          | Same closeout, captured from Codex                                                                                          |
+| Run the desk by voice             | [Voice ops](docs/voice-bosun.md): a dispatcher brain session that reads every tab and relays spoken words · [`bosun-brain`](templates/bosun-brain/CLAUDE.md)                                                                                                                            |                                                                                                                             |
 
 <p align="center">
   <a href="docs/diagrams.md"><strong>Explore the visual workflow gallery →</strong></a>
@@ -130,7 +134,7 @@ agentic-workflows/
 
 ### Copyable foundations
 
-- [`portable-policy.md`](templates/portable-policy.md): the one operating policy both agents load: judgment, code style, git authority, authorization across handoffs, where state lives.
+- [`portable-policy.md`](templates/portable-policy.md): the one operating policy every agent loads: judgment, code style, git authority, authorization across handoffs, where state lives.
 - [`AGENTS.md`](templates/AGENTS.md): a compact per-project contract for scope, verification, mutation tiers, and continuity.
 - [`project-spec.md`](templates/project-spec.md): durable intent plus live round state, decisions, and deferred work.
 - [`HANDOFF.md`](templates/HANDOFF.md): the exact state a future session needs, including the authorization it carries.
@@ -140,8 +144,9 @@ agentic-workflows/
 
 ### Working patterns
 
+- [`isolated-workflow`](skills/isolated-workflow/SKILL.md): the default delegated build. A fresh implementer, separate reviewers, a fix pass, and a main loop that owns git.
 - [`codex-fleet`](skills/codex-fleet/SKILL.md): conductor-led, multi-project rounds with living specs, a review board, run-scoped state, and fail-closed push and merge gates.
-- [`codex-workflow-hybrid`](skills/codex-workflow-hybrid/SKILL.md): Codex implements over the supervised channel; Claude orchestrates and verifies.
+- [`codex-workflow-hybrid`](skills/codex-workflow-hybrid/SKILL.md): opt-in cross-vendor build. Codex implements over the supervised channel; Claude orchestrates and verifies.
 - [`codex-workflow-lean`](skills/codex-workflow-lean/SKILL.md): Codex implements and reviews; Claude is only the workflow engine and the git owner.
 - [`claude-remote`](skills/claude-remote/SKILL.md): a Codex-led launch of a bounded Claude session in a Herdr pane, with the authorization record.
 - [`council`](skills/council/SKILL.md): independent opinions, anonymized cross-review, neutral synthesis, a recorded pick. The public v0 documents the adapter contract; bring your own runner.
@@ -169,8 +174,9 @@ agentic-workflows/
 | [Agentic operating system](docs/concepts/agentic-operating-system.md)          | [Closeout and handoff](docs/workflows/closeout-and-handoff.md)     |
 | [Supervised delegation](docs/concepts/supervised-delegation.md)                | [Codex from Claude](docs/workflows/codex-from-claude.md)           |
 | [Authorization provenance](docs/concepts/authorization-provenance.md)          | [Claude from Codex](docs/workflows/claude-from-codex.md)           |
-| [One policy, two engines](docs/concepts/one-policy-two-engines.md)             | [Codex-led session](docs/workflows/codex-led-session.md)           |
+| [One policy, three clients](docs/concepts/one-policy-two-engines.md)           | [Codex-led session](docs/workflows/codex-led-session.md)           |
 | [Execution-path triage](docs/concepts/execution-path-triage.md)                | [Workflow diagram gallery](docs/diagrams.md)                       |
+| [Native swarms](docs/concepts/native-swarms.md)                                | [`isolated-workflow`](skills/isolated-workflow/SKILL.md)           |
 | [Fleet execution](docs/concepts/fleet-execution.md)                            | [Codex fleet](docs/workflows/codex-fleet.md)                       |
 | [Living specs](docs/concepts/living-specs.md)                                  | [`project-spec.md`](templates/project-spec.md)                     |
 | [Handoffs and continuity](docs/concepts/handoffs-and-continuity.md)            | [`HANDOFF.md`](templates/HANDOFF.md)                               |
@@ -197,5 +203,5 @@ The kit is opinionated and will keep changing when my practice does. Copy what h
 
 <p align="center">
   <strong>Conduct the work. Verify the result. Leave a trail.</strong><br>
-  <sub>By <a href="https://nathanmauro.io">Nathan Mauro</a> · MIT licensed · built for adaptation · last reviewed 2026-11-12</sub>
+  <sub>By <a href="https://nathanmauro.io">Nathan Mauro</a> · MIT licensed · built for adaptation · last reviewed 2026-11-21</sub>
 </p>
