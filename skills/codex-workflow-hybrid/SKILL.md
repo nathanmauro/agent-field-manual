@@ -1,16 +1,17 @@
 ---
 name: codex-workflow-hybrid
 description: >
-  Orchestrates a scoped build in which Claude conducts a background Workflow, Codex does the
-  heavy implementation over a supervised channel, and Claude adversarially verifies every
-  deliverable. Use when the user wants to delegate a build to Codex while keeping a
-  cross-model verification pass. Triggers: "use codex", "delegate to codex", "defer to codex",
-  "save claude tokens", "use codex for the heavy lifting", "codex workflow", "hybrid codex".
-  This is the balanced variant: cross-model verification is the point. Use
+  Opt-in cross-vendor delegated build in which Claude conducts a background Workflow, Codex does
+  the heavy implementation over a supervised channel, and Claude adversarially verifies every
+  deliverable. Use only when explicitly asking for Codex or cross-vendor verification ("use codex",
+  "delegate to codex", "defer to codex", "codex workflow", "hybrid codex"); default delegated
+  builds use isolated same-vendor subagents plus a stateless adversarial oracle on demand. Use
   codex-workflow-lean only when deliberately accepting self-verification.
 ---
 
 > Public adaptation note: This skill is a sanitized public version of a private local workflow. Set your models through the client or env knobs, and replace paths, notification channels, and memory adapters with the equivalents in your own agent harness.
+>
+> Opt-in since 2026-11-16: default delegated builds now run isolated same-vendor implementer and verifier contexts, reserving this cross-vendor Codex workflow for explicit requests.
 
 # Codex-delegated workflow (hybrid: Claude orchestrates and verifies, Codex implements)
 

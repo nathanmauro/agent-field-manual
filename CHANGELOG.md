@@ -5,6 +5,22 @@ All notable changes to this repo are recorded here. The format follows
 Entries before 2026-10-31 were backfilled from the git history. On 2026-11-01 the history was
 squashed into a single sanitized root commit, so this file is now the change record.
 
+## 2026-11-21
+
+Sanitized drift sync for worktree isolation placement and isolated same-vendor delegation defaults.
+
+### Changed
+
+- [`templates/portable-policy.md`](templates/portable-policy.md): add the shadow-tree worktree
+  location rule (keep the main projects directory 1:1 with real repositories, place agent/feature
+  worktrees under a dedicated shadow tree such as `$HOME/worktrees/<project>/<slug>`, and remove
+  clean or merged worktrees when finished).
+- [`docs/concepts/execution-path-triage.md`](docs/concepts/execution-path-triage.md) and
+  [`skills/codex-workflow-hybrid/SKILL.md`](skills/codex-workflow-hybrid/SKILL.md): record that
+  isolated same-vendor delegation (fresh implementer, separate verifier contexts, optional
+  stateless adversarial oracle) is now the default delegated build path, with cross-vendor Codex
+  delegation over a supervised channel as an explicit opt-in.
+
 ## 2026-11-13
 
 Sanitized drift sync across fleet effort defaults, council runner isolation, supervised-delegation

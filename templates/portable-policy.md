@@ -34,6 +34,10 @@ nearest project guide override this when they are more specific.
   repair, external messages, purchases, and access changes require explicit direction.
 - Concurrent writers never share a checkout: separate worktrees, or serialize. The coordinator
   owns the outcome after delegation; a worker's "git blocked" is unfinished, not done.
+- Worktree location: never create sibling worktrees inside the main projects directory (keep it 1:1
+  with real repositories). Place agent and feature worktrees under a dedicated shadow tree such as
+  `$HOME/worktrees/<project>/<slug>`, and remove clean or merged worktrees when finished (removing
+  a worktree keeps its named branch and commits intact).
 
 ### Authorization across handoffs
 

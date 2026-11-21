@@ -59,10 +59,13 @@ specialist focused on exact derivations, variable bounds, and falsifiable tests 
 hedging. Use a [council](council-review.md) instead when independent disagreement across providers
 is worth the extra cost.
 
-A delegated build means the configured Codex model implements over a
-[supervised channel](supervised-delegation.md) and a model that did not write the code verifies
-it. Either engine can run the gate; the question is the same in Claude Code and in Codex, only the
-invocation syntax differs.
+A delegated build isolates the implementer in a fresh context and hands the finished diff to
+separate verifier contexts that never saw the implementer's reasoning, with a stateless
+adversarial oracle available on demand for high-stakes forks. By default this stays inside one
+model family (for example, an isolated same-vendor workflow); cross-vendor delegation to Codex
+over a [supervised channel](supervised-delegation.md) remains available as an explicit opt-in when
+second-vendor review is requested. Either engine can run the gate; the question is the same across
+clients, only the invocation syntax differs.
 
 ### The presentation
 
