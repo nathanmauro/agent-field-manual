@@ -155,6 +155,8 @@ run_check "node syntax: hybrid workflow" \
   node --check skills/codex-workflow-hybrid/templates/workflow.js
 run_check "node syntax: lean workflow" \
   node --check skills/codex-workflow-lean/templates/workflow.js
+run_check "node syntax: isolated workflow" \
+  node --check skills/isolated-workflow/templates/workflow.js
 run_check "python syntax: codex runner" \
   py_syntax scripts/codex-runner
 run_check "python syntax: prose placeholders" \
