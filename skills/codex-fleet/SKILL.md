@@ -13,6 +13,9 @@ description: >
   kanban board.
 ---
 
+> **Status: archived 2026-11-21, kept as reference.** Zero real uses after the cross-vendor
+> engine went opt-in; see [retirement cadence](../../docs/concepts/execution-path-triage.md#retirement-cadence).
+
 > Public adaptation note: This skill is a sanitized public version of a private local workflow. Set your models through the client or env knobs, and replace paths, notification channels, and memory adapters with the equivalents in your own agent harness.
 
 # Codex Fleet: multi-project agentic SDLC (PLAN, DO, FULL_AUTO)

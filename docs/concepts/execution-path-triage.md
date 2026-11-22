@@ -181,11 +181,15 @@ uses two weeks later has either the wrong trigger or no remaining job. Fix the t
 the tool off the active surface. A row nobody uses is noise that every agent still has to read.
 
 An engine change starts the clock too. The cross-vendor engine went opt-in on 2026-11-16, so the
-tools built mainly to drive it joined an existing watch item on a list reviewed on 2026-11-30:
-the [multi-project fleet](fleet-execution.md), the shell-supervised worker bus behind
+tools built mainly to drive it joined an existing watch item on a list due for review on
+2026-11-30: the [multi-project fleet](fleet-execution.md), the shell-supervised worker bus behind
 [supervised delegation](supervised-delegation.md), and a launcher that sprays queued tasks into
-parallel sessions. The cross-vendor council seat stays regardless; whatever else went unused
-moves to archived or reference status.
+parallel sessions. The usage data made the call early, on 2026-11-21: the fleet, the leanest
+cross-vendor build skill, and the spray launcher had zero real uses since the switch and were
+archived as reference. The worker bus stayed, because it is the only transport for the opt-in
+path and zero use under an opt-in rule is the rule working, not a dead tool. The cross-vendor
+council seat stays regardless. Count real invocations, not mentions: skill lists in system
+prompts make every tool look busy to a naive grep.
 
 ## Work Modes
 

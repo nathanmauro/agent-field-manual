@@ -58,10 +58,11 @@ or `~/.gemini/skills` stays invisible. Before materially expanding one or promot
 `trial` skill into the shared cross-client pack, migrate it to a full record above and re-verify
 all target clients.
 
-| Name               | Clients        | Owner or source                                | Authority and risk                                                  | Trigger and existing evidence                                               | Status |
-| ------------------ | -------------- | ---------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------ |
-| `/reseed`          | Claude command | This repo, `agents/claude/commands/reseed.md`  | Read-only rebuild of working context from an earlier session        | `/reseed`, `/reseed --deep`, "pick up where the last session left off"      | active |
-| `host-automations` | Claude         | Host app, vendor-managed file in live `skills` | Schedules local automations that require explicit user confirmation | "every morning do X"; host app keeps the file current, do not edit in place | active |
+| Name               | Clients        | Owner or source                                | Authority and risk                                                  | Trigger and existing evidence                                               | Status                                          |
+| ------------------ | -------------- | ---------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------- |
+| `/reseed`          | Claude command | This repo, `agents/claude/commands/reseed.md`  | Read-only rebuild of working context from an earlier session        | `/reseed`, `/reseed --deep`, "pick up where the last session left off"      | active                                          |
+| `host-automations` | Claude         | Host app, vendor-managed file in live `skills` | Schedules local automations that require explicit user confirmation | "every morning do X"; host app keeps the file current, do not edit in place | active                                          |
+| `/spray`           | Claude command | This repo, archived under `archive/commands/`  | Fired detached sessions in parallel panes                           | Zero real uses in the two weeks after its engine went opt-in                | retired: archived 2026-11-21, kept as reference |
 
 ## Model-pin hygiene
 

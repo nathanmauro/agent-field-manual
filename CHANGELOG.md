@@ -12,6 +12,11 @@ a stateless specialist oracle, Gemini in Antigravity as primary for native swarm
 cross-repo operations, and Codex as an opt-in cross-vendor verifier. Also a sanitized drift sync
 for worktree placement and isolated same-vendor delegation defaults.
 
+The retirement review ran early on usage data: the multi-project fleet, the leanest cross-vendor
+build skill, and the spray launcher are archived as reference (zero real uses since the engine
+went opt-in); the worker bus and the council seat stay. The skill-registry template gains a
+`retired` example row.
+
 ### Added
 
 - [`skills/isolated-workflow/`](skills/isolated-workflow/SKILL.md): the default delegated build
