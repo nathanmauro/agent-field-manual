@@ -7,7 +7,9 @@ squashed into a single sanitized root commit, so this file is now the change rec
 
 ## 2026-11-23
 
-A context-budget section, consolidated here instead of a separate repo. Tool output across 18,873
+The repo is renamed from `agentic-workflows` to `agent-field-manual`, the one consolidated public
+home for how I work with agents; GitHub redirects the old name. It also gains a context-budget
+section, consolidated here instead of a separate repo. Tool output across 18,873
 transcripts was measured first: MCP connectors were 3.6% of tool-result tokens, Bash 48% and Read
 35%. The section ships what came out of that.
 

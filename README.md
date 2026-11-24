@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/assets/agentic-workflows-hero.svg" alt="Agentic Workflows: a drafting-plate diagram of a project's trajectory (intent, spec, delegate, verify, hand off) up to a present head node with projected futures — how Claude, Gemini swarms, and Codex run as one engineering operating system" width="100%">
+  <img src="docs/assets/agentic-workflows-hero.svg" alt="Agent Field Manual: a drafting-plate diagram of a project's trajectory (intent, spec, delegate, verify, hand off) up to a present head node with projected futures — how Claude, Gemini swarms, and Codex run as one engineering operating system" width="100%">
 </p>
 
-<h1 align="center">Agentic Workflows</h1>
+<h1 align="center">Agent Field Manual</h1>
 
 <p align="center">
   <strong>How I run Claude, Gemini swarms, and Codex as one multi-engine operating system.</strong><br>
@@ -23,7 +23,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="MIT licensed" src="https://img.shields.io/badge/license-MIT-11100E?style=flat-square&labelColor=FF5A36&color=11100E"></a>
-  <a href="https://github.com/nathanmauro/agentic-workflows/actions/workflows/audit.yml"><img alt="Public audit" src="https://github.com/nathanmauro/agentic-workflows/actions/workflows/audit.yml/badge.svg"></a>
+  <a href="https://github.com/nathanmauro/agent-field-manual/actions/workflows/audit.yml"><img alt="Public audit" src="https://github.com/nathanmauro/agent-field-manual/actions/workflows/audit.yml/badge.svg"></a>
   <img alt="Works with Claude, Antigravity, and Codex" src="https://img.shields.io/badge/agents-Claude_·_Antigravity_·_Codex-11100E?style=flat-square&labelColor=EDE7DB&color=11100E">
   <img alt="Docs, templates, examples, and runnable skills" src="https://img.shields.io/badge/kit-docs_·_templates_·_skills-11100E?style=flat-square&labelColor=CBFF4A&color=11100E">
 </p>
@@ -108,11 +108,11 @@ Claude leads by default and Codex can still lead a session. Each row names both 
 You do not need a fleet on day one. Start with one project guide, one acceptance bar, and one clean handoff.
 
 ```bash
-git clone https://github.com/nathanmauro/agentic-workflows.git ~/agentic-workflows
+git clone https://github.com/nathanmauro/agent-field-manual.git ~/agent-field-manual
 
 # From an existing project:
-cp ~/agentic-workflows/templates/AGENTS.md ./AGENTS.md
-cp ~/agentic-workflows/templates/HANDOFF.md ./HANDOFF.md
+cp ~/agent-field-manual/templates/AGENTS.md ./AGENTS.md
+cp ~/agent-field-manual/templates/HANDOFF.md ./HANDOFF.md
 ```
 
 Then adapt three things in `AGENTS.md`:
@@ -126,7 +126,7 @@ When a second agent joins, add the [shared policy](templates/portable-policy.md)
 ## What is in the kit
 
 ```text
-agentic-workflows/
+agent-field-manual/
 ├── skills/       portable workflows and runnable helper scripts, with fixture tests
 ├── tools/        lean CLIs that replace connector reads, plus an MCP inventory
 ├── hooks/        Claude Code hooks, starting with the MCP result guard
