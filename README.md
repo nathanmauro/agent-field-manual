@@ -43,8 +43,9 @@ This repo is the control layer I run around three agent clients. It is process, 
 - **Isolated builds by default, swarms for breadth.** A delegated build runs as an [isolated workflow](skills/isolated-workflow/SKILL.md): a fresh-context implementer, separate reviewers that never saw its reasoning, a fix pass for real issues only, and a main loop that owns git. Wide, shallow work goes to a swarm instead, and a swarm worker that hits deep single-repo engineering hands it back to Claude Code. Either way, workers that edit never share a checkout: each gets a worktree under a dedicated shadow tree, or they run serially. Codex is still reachable over a [supervised channel](docs/concepts/supervised-delegation.md) when cross-vendor review is worth it.
 - **Where state lives.** Interactive sessions run as spaces and tabs in [Herdr](https://herdr.dev) (`herdr-app` for window placement, `hc` for terminal lifecycle and inspection) with Remote Control on, one space per checkout, Claude and Antigravity sessions as tabs. Linear holds execution. Obsidian holds durable notes and parked ideas. [Black Box](https://github.com/nathanmauro/black-box) holds decisions, handoffs, and projections across clients over MCP, and anything started but unfinished gets an open-work broadcast with a follow-up time that a periodic sweep collects.
 - **Cost, startup hygiene, and retirement.** Interactive drivers default to `medium` effort. Unused global MCP servers and zero-use skills are pruned on a regular audit cadence, and autonomous background queues carry explicit ready-backlog caps so agent output never outruns human review. Three tools are on a retirement review for 2026-11-30, two weeks after Codex went opt-in: the Codex [fleet](skills/codex-fleet/SKILL.md), the shell-supervised worker bus, and a session-spray launcher. The council's cross-vendor seat stays.
+- **A context budget, measured.** Every tool result an agent reads stays in context, so tool output is counted per call across every transcript before anything gets rebuilt. On 18,873 transcripts MCP was 3.6% of tool-result tokens (Bash 48%, Read 35%), so connector reads moved to small owned CLIs that return 12 to 21 times less for the same request, a hook trims the oversized results of the connectors that stay, and sessions rotate at a clean break instead of autocompacting. See [Context budget](docs/concepts/context-budget.md).
 
-Last reviewed 2026-11-21.
+Last reviewed 2026-11-23.
 
 ## What it demonstrates
 
@@ -56,6 +57,7 @@ Last reviewed 2026-11-21.
 - **Policy as code.** One policy source, one skill source, imported by Claude Code and rendered into Codex and Antigravity as hash-marked blocks, backed by a multi-ring drift audit across policy, skill links, hooks, docs, and continuity records. [Concept](docs/concepts/one-policy-two-engines.md) · [template](templates/portable-policy.md) · [skill registry](templates/skill-registry.md)
 - **Fail-closed release gates and queue backpressure.** A fleet that merges its own green PRs only through a helper that re-checks mode, round, repo identity, PR head, and danger hints before and after CI, plus backlog caps that pause unattended generation when unreviewed output piles up. [Skill](skills/codex-fleet/SKILL.md) · [workflow](docs/workflows/codex-fleet.md)
 - **Continuity that compounds without write-only bloat.** Compact handoffs written when state would be lost by `git log` alone, typed decisions with rejected alternatives, closeout handoffs reused directly as session summaries without an extra model call, and projections that assemble into a project trajectory. [Concept](docs/concepts/handoffs-and-continuity.md) · [trajectory](docs/concepts/project-trajectory.md)
+- **A context budget you can measure.** A transcript scanner that sizes every tool result, five read-only CLIs that replace connector reads (Gmail, Calendar, Drive, Linear) for both Claude Code and Codex, and a fail-open hook that forces Gmail plain text and trims any MCP result over 20K characters. [Concept](docs/concepts/context-budget.md) · [tools](tools/README.md) · [hook](hooks/mcp-result-guard/README.md) · [stats](scripts/tool-stats/)
 - **Choosing the lean path.** A main-loop triage gate and an anti-rabbit-hole gate that pick the stage, engine, and work mode (`prototype`, `sdlc`, or read-only `explore`) before anything heavy runs, after one default-to-heavy run burned 11.75M tokens for no diff. [Concept](docs/concepts/execution-path-triage.md)
 
 ## See one run
@@ -94,6 +96,7 @@ Claude leads by default and Codex can still lead a session. Each row names both 
 | Settle a consequential decision   | [Council review](docs/concepts/council-review.md)                                                                                                                                                                                                                                       | [`council`](skills/council/SKILL.md) (`$council`)                                                                           |
 | Run a whole session               | [Agentic operating system](docs/concepts/agentic-operating-system.md)                                                                                                                                                                                                                   | [Codex-led session](docs/workflows/codex-led-session.md) (`$baton`, `/prompts:reseed`, `/prompts:handoff`, `/prompts:ship`) |
 | Leave work in a trustworthy state | [Closeout and handoff](docs/workflows/closeout-and-handoff.md)                                                                                                                                                                                                                          | Same closeout, captured from Codex                                                                                          |
+| Keep context lean                 | [Context budget](docs/concepts/context-budget.md): measure with [`tool-stats`](scripts/tool-stats/), read through [`tools/`](tools/README.md), guard with [`mcp-result-guard`](hooks/mcp-result-guard/README.md)                                                                        | Same [`tools/`](tools/README.md) through the shell                                                                          |
 | Run the desk by voice             | [Voice ops](docs/voice-bosun.md): a dispatcher brain session that reads every tab and relays spoken words · [`bosun-brain`](templates/bosun-brain/CLAUDE.md)                                                                                                                            |                                                                                                                             |
 
 <p align="center">
@@ -125,10 +128,12 @@ When a second agent joins, add the [shared policy](templates/portable-policy.md)
 ```text
 agentic-workflows/
 ├── skills/       portable workflows and runnable helper scripts, with fixture tests
+├── tools/        lean CLIs that replace connector reads, plus an MCP inventory
+├── hooks/        Claude Code hooks, starting with the MCP result guard
 ├── templates/    agent guides, the shared policy, living specs, handoffs, adapters, a skill registry
 ├── examples/     sanitized fleet, council, continuity, and supervised-delegation artifacts
 ├── docs/         concepts, step-by-step workflows, diagrams, kindred systems
-├── scripts/      a fail-closed public-release audit (runs in CI) and the codex-runner adapter
+├── scripts/      the public-release audit (runs in CI), the codex-runner adapter, tool-stats
 └── CHANGELOG.md  dated record of what changed and when the stack was last reviewed
 ```
 
@@ -169,19 +174,21 @@ agentic-workflows/
 
 ## Read the field manual
 
-| Learn the idea                                                                 | Put it into practice                                               |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| [Agentic operating system](docs/concepts/agentic-operating-system.md)          | [Closeout and handoff](docs/workflows/closeout-and-handoff.md)     |
-| [Supervised delegation](docs/concepts/supervised-delegation.md)                | [Codex from Claude](docs/workflows/codex-from-claude.md)           |
-| [Authorization provenance](docs/concepts/authorization-provenance.md)          | [Claude from Codex](docs/workflows/claude-from-codex.md)           |
-| [One policy, three clients](docs/concepts/one-policy-two-engines.md)           | [Codex-led session](docs/workflows/codex-led-session.md)           |
-| [Execution-path triage](docs/concepts/execution-path-triage.md)                | [Workflow diagram gallery](docs/diagrams.md)                       |
-| [Native swarms](docs/concepts/native-swarms.md)                                | [`isolated-workflow`](skills/isolated-workflow/SKILL.md)           |
-| [Fleet execution](docs/concepts/fleet-execution.md)                            | [Codex fleet](docs/workflows/codex-fleet.md)                       |
-| [Living specs](docs/concepts/living-specs.md)                                  | [`project-spec.md`](templates/project-spec.md)                     |
-| [Handoffs and continuity](docs/concepts/handoffs-and-continuity.md)            | [`HANDOFF.md`](templates/HANDOFF.md)                               |
-| [Project trajectory and possible futures](docs/concepts/project-trajectory.md) | [Black Box trajectories](https://github.com/nathanmauro/black-box) |
-| [Council review](docs/concepts/council-review.md)                              | [`council`](skills/council/SKILL.md)                               |
+| Learn the idea                                                                 | Put it into practice                                                                 |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| [Agentic operating system](docs/concepts/agentic-operating-system.md)          | [Closeout and handoff](docs/workflows/closeout-and-handoff.md)                       |
+| [Supervised delegation](docs/concepts/supervised-delegation.md)                | [Codex from Claude](docs/workflows/codex-from-claude.md)                             |
+| [Authorization provenance](docs/concepts/authorization-provenance.md)          | [Claude from Codex](docs/workflows/claude-from-codex.md)                             |
+| [One policy, three clients](docs/concepts/one-policy-two-engines.md)           | [Codex-led session](docs/workflows/codex-led-session.md)                             |
+| [Execution-path triage](docs/concepts/execution-path-triage.md)                | [Workflow diagram gallery](docs/diagrams.md)                                         |
+| [Native swarms](docs/concepts/native-swarms.md)                                | [`isolated-workflow`](skills/isolated-workflow/SKILL.md)                             |
+| [Fleet execution](docs/concepts/fleet-execution.md)                            | [Codex fleet](docs/workflows/codex-fleet.md)                                         |
+| [Living specs](docs/concepts/living-specs.md)                                  | [`project-spec.md`](templates/project-spec.md)                                       |
+| [Handoffs and continuity](docs/concepts/handoffs-and-continuity.md)            | [`HANDOFF.md`](templates/HANDOFF.md)                                                 |
+| [Project trajectory and possible futures](docs/concepts/project-trajectory.md) | [Black Box trajectories](https://github.com/nathanmauro/black-box)                   |
+| [Council review](docs/concepts/council-review.md)                              | [`council`](skills/council/SKILL.md)                                                 |
+| [Context budget](docs/concepts/context-budget.md)                              | [`tools/`](tools/README.md) · [`mcp-result-guard`](hooks/mcp-result-guard/README.md) |
+| [Context guard](docs/concepts/context-guard.md)                                | [`tool-stats`](scripts/tool-stats/)                                                  |
 
 ## Kindred systems
 

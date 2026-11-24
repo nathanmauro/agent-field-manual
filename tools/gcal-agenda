@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+# desc: Google Calendar events as one line each (start, end, title, where); search with -q.
+# usage: gcal-agenda [--days 7 | --from 2026-11-24 --to 2026-11-30] [-q text] [--all] [--fields ...]
+# effect: read
+# replaces: mcp__claude_ai_Google_Calendar__list_events mcp__claude_ai_Google_Calendar__search_events mcp__claude_ai_Google_Calendar__get_event
+"""Lean replacement for the Calendar connector's list_events and search_events.
+
+The connector returns each event with its HTML description, conferenceData, creator, reminders
+and attendee objects, about 5.5K tokens per call. An agenda needs four columns.
+"""
+
+import datetime as dt
+import os
+import sys
+
+# Keep __pycache__ out of the shared library checkout.
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib"))
+
+import lean  # noqa: E402
+
+
+FIELDS = ["start", "end", "title", "where", "attendees", "status", "calendar", "id", "desc"]
+DEFAULT_FIELDS = ["start", "end", "title", "where"]
+
+
+def main():
+    p = lean.parser(__doc__.splitlines()[0], DEFAULT_FIELDS, FIELDS)
+    p.add_argument("--days", type=int, default=7, help="window from now (default 7)")
+    p.add_argument("--from", dest="start", help="YYYY-MM-DD, overrides --days")
+    p.add_argument("--to", dest="end", help="YYYY-MM-DD, exclusive")
+    p.add_argument("-q", "--query", help="free-text search, like search_events")
+    p.add_argument("--all", action="store_true", help="every calendar, not just primary")
+    p.add_argument("--limit", type=int, default=100)
+    p.set_defaults(max_chars=200)
+
+    args = p.parse_args()
+
+    time_min, time_max = _window(args)
+    rows = []
+
+    for cal_id, cal_name in _calendars(args.all):
+        params = {
+            "calendarId": cal_id,
+            "timeMin": time_min,
+            "timeMax": time_max,
+            "singleEvents": True,
+            "orderBy": "startTime",
+            "maxResults": args.limit,
+        }
+
+        if args.query:
+            params["q"] = args.query
+
+        listing = lean.gws("calendar", "events", "list", params=params)
+
+        for event in listing.get("items", []):
+            rows.append(_row(event, cal_name))
+
+    rows.sort(key=lambda r: r["_sort"])
+
+    more = "--limit %d or a narrower window" % (args.limit * 2) if len(rows) > args.limit else None
+
+    lean.emit(
+        rows[: args.limit],
+        args,
+        FIELDS,
+        text_fields=("title", "where", "desc"),
+        more=more,
+    )
+
+
+def _window(args):
+    now = dt.datetime.now().astimezone()
+
+    if args.start:
+        start = dt.datetime.fromisoformat(args.start).astimezone()
+    else:
+        start = now
+
+    if args.end:
+        end = dt.datetime.fromisoformat(args.end).astimezone()
+    else:
+        end = start + dt.timedelta(days=args.days)
+
+    return start.isoformat(), end.isoformat()
+
+
+def _calendars(every):
+    if not every:
+        return [("primary", "primary")]
+
+    listing = lean.gws("calendar", "calendarList", "list", params={"minAccessRole": "reader"})
+
+    return [(c["id"], c.get("summaryOverride") or c.get("summary", "")) for c in listing["items"]]
+
+
+def _row(event, cal_name):
+    start = event.get("start", {})
+    end = event.get("end", {})
+    where = event.get("location") or ("meet" if event.get("hangoutLink") else "")
+
+    return {
+        "_sort": start.get("dateTime") or start.get("date", ""),
+        "start": _when(start),
+        "end": _when(end, time_only=True),
+        "title": event.get("summary", "(no title)"),
+        "where": where,
+        "attendees": len(event.get("attendees", [])),
+        "status": event.get("status", ""),
+        "calendar": cal_name,
+        "id": event.get("id", ""),
+        "desc": lean.html_to_text(event.get("description", "")),
+    }
+
+
+def _when(stamp, time_only=False):
+    """'Mon 11-24 09:00' for timed events, the bare date for all-day ones."""
+    if "dateTime" not in stamp:
+        return stamp.get("date", "")
+
+    moment = dt.datetime.fromisoformat(stamp["dateTime"]).astimezone()
+
+    if time_only:
+        return moment.strftime("%H:%M")
+
+    return moment.strftime("%a %m-%d %H:%M")
+
+
+if __name__ == "__main__":
+    lean.main(main)

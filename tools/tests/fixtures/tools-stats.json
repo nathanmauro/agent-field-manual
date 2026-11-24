@@ -1,0 +1,6 @@
+{"generated":"2026-11-23 19:48","files":10,"toolTokens":10000,"tools":[
+{"server":"claude code built-in","category":"shell","name":"Bash","full":"Bash","calls":5,"tokens":8000,"avg":1600,"max":3000},
+{"server":"mcp · claude.ai Gmail","category":"mcp","name":"get_thread","full":"mcp__claude_ai_Gmail__get_thread","calls":3,"tokens":1200,"avg":400,"p90":600,"max":900,"samples":[{"preview":"PRIVATE-PREVIEW"}]},
+{"server":"mcp · desktop-gmail-connector","category":"mcp","name":"get_thread","full":"mcp__desktop_gmail__get_thread","calls":1,"tokens":300,"avg":300,"p90":300,"max":300},
+{"server":"mcp · memory","category":"mcp","name":"recallContext","full":"mcp__memory__recallContext","calls":2,"tokens":400,"avg":200,"p90":250,"max":250},
+{"server":"mcp · mystery","category":"mcp","name":"thing","full":"mcp__mystery__thing","calls":1,"tokens":100,"avg":100,"p90":100,"max":100}]}

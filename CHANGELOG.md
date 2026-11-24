@@ -5,6 +5,27 @@ All notable changes to this repo are recorded here. The format follows
 Entries before 2026-10-31 were backfilled from the git history. On 2026-11-01 the history was
 squashed into a single sanitized root commit, so this file is now the change record.
 
+## 2026-11-23
+
+A context-budget section, consolidated here instead of a separate repo. Tool output across 18,873
+transcripts was measured first: MCP connectors were 3.6% of tool-result tokens, Bash 48% and Read
+35%. The section ships what came out of that.
+
+### Added
+
+- [`docs/concepts/context-budget.md`](docs/concepts/context-budget.md): the measurement, the
+  three fixes, and what is still unknown.
+- [`tools/`](tools/README.md): five read-only CLIs (`gmail-thread`, `gcal-agenda`,
+  `gdrive-find`, `gdrive-read`, `linear-find`) on one shared contract, plus `mcp-inventory`,
+  which ranks MCP tools by tokens against a map of their lean replacements. Offline tests.
+- [`hooks/mcp-result-guard/`](hooks/mcp-result-guard/README.md): a Claude Code hook that forces
+  Gmail plain text when the format is unset and trims MCP results over 20K characters, saving
+  the full copy. Fails open. Tests run in the public audit.
+- [`scripts/tool-stats/`](scripts/tool-stats/): a transcript scanner and a local page showing
+  what every tool call costs in tokens.
+- [`docs/concepts/context-guard.md`](docs/concepts/context-guard.md): design notes for rotating
+  sessions at a clean break instead of autocompacting.
+
 ## 2026-11-21
 
 The stack moves from two engines to a 2+1 split: Claude as primary builder and orchestrator with

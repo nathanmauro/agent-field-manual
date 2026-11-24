@@ -1,0 +1,505 @@
+#!/usr/bin/env python3
+"""PreToolUse/PostToolUse hook that keeps MCP tool results from flooding the context window.
+
+PreToolUse (Gmail `get_thread` and `get_message`): a call without `messageFormat`, or with
+MESSAGE_FORMAT_UNSPECIFIED, is rewritten to ask for PLAIN_TEXT. Gmail documents PLAIN_TEXT as the
+default, but an omitted format really returns `htmlBody` too (about 20K of a 24K result for a
+LinkedIn InMail). An explicit FULL_CONTENT, MINIMAL or METADATA_ONLY is left alone. No permission
+decision is returned, so the normal permission flow still runs on the rewritten input.
+
+PostToolUse (matcher `mcp__.*`): a result whose text is over MCP_RESULT_GUARD_MAX_CHARS (20000)
+is saved whole to ~/.claude/tool-output-full/<session_id>/<tool_use_id>.json, then trimmed:
+`htmlBody` fields dropped, base64 and data: blobs replaced, long URL query strings removed,
+invisible filler collapsed, and as a last resort the text cut at a clean boundary. Free-standing
+HTML is turned into text only for mail tools; elsewhere markup is content and stays. The model
+gets the trimmed copy through `updatedToolOutput`, headed by a line naming the saved file and
+every kind of lossy edit made, so a trimmed result never passes for the original.
+
+Fails open: a malformed payload, an unknown shape or any error exits 0 with no output, so a tool
+call is never blocked or corrupted. Turn it off with MCP_RESULT_GUARD_OFF=1.
+"""
+
+from __future__ import annotations
+
+import datetime
+import json
+import os
+import re
+import sys
+import time
+
+DEFAULT_MAX_CHARS = 20000
+DEFAULT_KEEP_DAYS = 14
+MIN_MAX_CHARS = 2000
+
+GMAIL_FORMAT_KEY = "messageFormat"
+GMAIL_DEFAULT_FORMATS = {None, "", "MESSAGE_FORMAT_UNSPECIFIED"}
+GMAIL_PLAIN_TEXT = "PLAIN_TEXT"
+
+HTML_KEYS = {"htmlBody", "html_body", "bodyHtml", "body_html"}
+PLAIN_SIBLING_KEYS = ("plaintextBody", "plainTextBody", "textBody", "text", "body")
+
+BLOB_MIN_CHARS = 200
+URL_MIN_CHARS = 120
+HTML_MIN_CHARS = 1000
+HTML_MIN_TAGS = 20
+BOUNDARY_WINDOW = 2000
+HEADER_TAG = "[mcp-result-guard]"
+TRUTHY = {"1", "true", "yes", "on"}
+
+DATA_URI = re.compile(r"data:([\w.+-]+/[\w.+-]+)?(?:;[\w=.+-]+)*;base64,[A-Za-z0-9+/=_-]+")
+BASE64_RUN = re.compile(r"(?<![A-Za-z0-9+/=_-])[A-Za-z0-9+/_-]{%d,}={0,2}" % BLOB_MIN_CHARS)
+URL = re.compile(r"https?://[^\s\"'<>()\[\]{}\\]+")
+
+# Zero-width and joiner characters that Gmail and newsletters pad snippets with. U+200D (ZWJ)
+# is left out: it holds emoji sequences together.
+INVISIBLE = "\u00ad\u034f\u180e\u200b\u200c\u200e\u200f\u2060\u2061\u2062\u2063\u2064\ufeff"
+SPACE_CHARS = " \t\u00a0" + "".join(map(chr, range(0x2000, 0x200B))) + "\u202f\u205f\u3000"
+
+# Each match starts on an invisible character, so a long plain whitespace run fails at once
+# instead of being rescanned from every position (quadratic: 30K spaces took 2.9 s).
+FILLER_CORE = re.compile("[%s](?:[%s]*[%s])+" % (INVISIBLE, SPACE_CHARS, INVISIBLE))
+SPACE_RUN = re.compile("[%s]*" % SPACE_CHARS)
+LONE_INVISIBLE = re.compile("[%s]" % INVISIBLE)
+BLANK_LINES = re.compile(r"\n[ \t\u00a0]*(?:\n[ \t\u00a0]*){2,}")
+
+# `[^<>]` stops a tag scan at the next `<`, so many unclosed `<a ` stay linear.
+HTML_TAG = re.compile(r"<[A-Za-z/!][^<>]*>")
+HTML_HINT = re.compile(r"<(?:html|body|div|table|td|tr|span|p|br|a)\b", re.IGNORECASE)
+HTML_DROP = re.compile(r"<(style|script|head)\b.*?</\1\s*>", re.IGNORECASE | re.DOTALL)
+HTML_BREAK = re.compile(r"<(?:br|/p|/div|/tr|/li|/h[1-6])\b[^<>]*>", re.IGNORECASE)
+
+# Free-standing HTML is turned into text only for mail tools. Elsewhere markup is real content
+# (source files, page dumps, docs), and stripping it would hand the model a corrupted copy.
+MAIL_TOOL = re.compile(r"mail", re.IGNORECASE)
+
+# Every lossy edit is named in the header, so a trimmed result never passes for the original.
+CHANGE_NAMES = (
+    ("html_field", "HTML body field removed", "HTML body fields removed"),
+    ("html_text", "HTML text stripped of tags", "HTML texts stripped of tags"),
+    ("base64", "base64 blob replaced", "base64 blobs replaced"),
+    ("url_query", "URL query string removed", "URL query strings removed"),
+    ("filler", "invisible filler run removed", "invisible filler runs removed"),
+    ("blank_lines", "blank-line run collapsed", "blank-line runs collapsed"),
+    ("cut", "text cut short", "texts cut short"),
+)
+HTML_ENTITIES = {"&nbsp;": " ", "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'"}
+
+# Preferred cut points, best first: a line break, then the end of a JSON value, then a word.
+BOUNDARIES = ("\n", "},", "],", ',"', ", ", " ")
+
+
+def env_int(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, default))
+    except ValueError:
+        return default
+
+
+def env_flag(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in TRUTHY
+
+
+# --- PreToolUse -----------------------------------------------------------------------------
+
+
+def rewrite_gmail_input(payload: dict) -> dict | None:
+    tool_name = payload.get("tool_name") or ""
+    tool_input = payload.get("tool_input")
+    if not tool_name.endswith(("__get_thread", "__get_message")) or not isinstance(tool_input, dict):
+        return None
+
+    # Under CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG a user hook that changes input gets the call
+    # denied outright, so asking for less would cost the whole call.
+    if env_flag("CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG"):
+        return None
+
+    if tool_input.get(GMAIL_FORMAT_KEY) not in GMAIL_DEFAULT_FORMATS:
+        return None
+
+    updated = dict(tool_input)
+    updated[GMAIL_FORMAT_KEY] = GMAIL_PLAIN_TEXT
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "updatedInput": updated,
+        }
+    }
+
+
+# --- PostToolUse: trimming ------------------------------------------------------------------
+
+
+def html_to_text(html: str) -> str:
+    text = HTML_DROP.sub("", html)
+    text = HTML_BREAK.sub("\n", text)
+    text = HTML_TAG.sub("", text)
+    for entity, char in HTML_ENTITIES.items():
+        text = text.replace(entity, char)
+    return text
+
+
+def looks_like_html(text: str) -> bool:
+    if len(text) < HTML_MIN_CHARS or not HTML_HINT.search(text):
+        return False
+    return len(HTML_TAG.findall(text, 0, 20000)) >= HTML_MIN_TAGS
+
+
+def has_plain_sibling(obj: dict) -> bool:
+    return any(isinstance(obj.get(key), str) and obj[key].strip() for key in PLAIN_SIBLING_KEYS)
+
+
+def is_blob(text: str) -> bool:
+    # A real blob mixes cases and digits; a long run of one class is more likely a word or id.
+    return (
+        re.search("[a-z]", text) is not None
+        and re.search("[A-Z]", text) is not None
+        and re.search("[0-9]", text) is not None
+    )
+
+
+def cut_at_boundary(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+
+    window_start = max(0, limit - BOUNDARY_WINDOW)
+    window = text[window_start:limit]
+    for boundary in BOUNDARIES:
+        index = window.rfind(boundary)
+        if index >= 0:
+            return text[: window_start + index + len(boundary)]
+    return text[:limit]
+
+
+def truncate(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+
+    # Too little room for even the marker: drop the part; the header names the full copy.
+    marker_room = 120
+    if limit <= marker_room:
+        return ""
+
+    kept = cut_at_boundary(text, max(0, limit - marker_room)).rstrip()
+    dropped = len(text) - len(kept)
+    return kept + "\n…[%s cut %d chars here; they are in the full result]" % (HEADER_TAG, dropped)
+
+
+class Scrubber:
+    """Scrubs one result and counts each kind of lossy edit it makes, for the header."""
+
+    def __init__(self, keep_html: bool, strip_free_html: bool) -> None:
+        self.keep_html = keep_html
+        self.strip_free_html = strip_free_html and not keep_html
+        self.changes: dict[str, int] = {}
+
+    def note(self, kind: str, count: int = 1) -> None:
+        if count > 0:
+            self.changes[kind] = self.changes.get(kind, 0) + count
+
+    def data_uri_placeholder(self, match: re.Match) -> str:
+        if len(match.group(0)) <= BLOB_MIN_CHARS:
+            return match.group(0)
+
+        self.note("base64")
+        mime = match.group(1) or "data"
+        return "[%s base64, %d chars removed]" % (mime, len(match.group(0)))
+
+    def base64_placeholder(self, match: re.Match) -> str:
+        blob = match.group(0)
+        if not is_blob(blob):
+            return blob
+
+        self.note("base64")
+        return "[base64, %d chars removed]" % len(blob)
+
+    def strip_url_query(self, match: re.Match) -> str:
+        url = match.group(0)
+        if len(url) <= URL_MIN_CHARS:
+            return url
+
+        # Cut at the query only: Gmail view links carry the thread id in the fragment.
+        cut = url.find("?")
+        if cut < 0:
+            return url
+
+        self.note("url_query")
+        fragment = url.find("#", cut)
+        tail = url[fragment:] if fragment >= 0 else ""
+        return url[:cut] + "?…" + tail
+
+    def collapse_filler(self, text: str) -> str:
+        pieces = []
+        last = 0
+        for match in FILLER_CORE.finditer(text):
+            # The spaces around a run are absorbed here; a regex that takes them backtracks.
+            pieces.append(text[last : match.start()].rstrip(SPACE_CHARS))
+            pieces.append(" ")
+            last = SPACE_RUN.match(text, match.end()).end()
+            self.note("filler")
+
+        if not pieces:
+            return text
+        pieces.append(text[last:])
+        return "".join(pieces)
+
+    def text(self, text: str, html_as_text: bool = False) -> str:
+        if html_as_text or (self.strip_free_html and looks_like_html(text)):
+            text = html_to_text(text)
+            self.note("html_text")
+
+        text = DATA_URI.sub(self.data_uri_placeholder, text)
+        text = URL.sub(self.strip_url_query, text)
+        text = BASE64_RUN.sub(self.base64_placeholder, text)
+        text = self.collapse_filler(text)
+
+        text, lone = LONE_INVISIBLE.subn("", text)
+        self.note("filler", lone)
+
+        text, blank = BLANK_LINES.subn("\n\n", text)
+        self.note("blank_lines", blank)
+        return text
+
+    def value(self, value):
+        if isinstance(value, str):
+            return self.text(value)
+
+        if isinstance(value, list):
+            return [self.value(item) for item in value]
+
+        if not isinstance(value, dict):
+            return value
+
+        scrubbed = {}
+        keep_html_as_text = not has_plain_sibling(value)
+        for key, item in value.items():
+            if key in HTML_KEYS and isinstance(item, str) and not self.keep_html:
+                # With no plain-text body beside it, the HTML is the only copy of the message.
+                if keep_html_as_text and item.strip():
+                    scrubbed[key] = self.text(item, html_as_text=True)
+                else:
+                    self.note("html_field")
+                continue
+            scrubbed[key] = self.value(item)
+        return scrubbed
+
+    def result_text(self, text: str) -> str:
+        stripped = text.lstrip()
+        if stripped[:1] in ("{", "["):
+            try:
+                parsed = json.loads(text)
+            except ValueError:
+                parsed = None
+            if parsed is not None:
+                compact = self.value(parsed)
+                return json.dumps(compact, ensure_ascii=False, separators=(",", ":"))
+        return self.text(text)
+
+    def response(self, response):
+        """Scrub every text part of a string or content-block result, keeping its shape."""
+        if isinstance(response, str):
+            return self.result_text(response)
+
+        scrubbed = []
+        for block in response:
+            if is_text_block(block):
+                scrubbed.append({**block, "text": self.result_text(block["text"])})
+            else:
+                # Images and other blocks pass through untouched.
+                scrubbed.append(block)
+        return scrubbed
+
+    def fit(self, response, budget: int):
+        """Cut text to the budget, earlier blocks first. Returns (response, text chars kept)."""
+        if isinstance(response, str):
+            body = truncate(response, budget)
+            self.note("cut", int(len(body) < len(response)))
+            return body, len(body)
+
+        fitted = []
+        kept = 0
+        for block in response:
+            if not is_text_block(block):
+                fitted.append(block)
+                continue
+
+            body = truncate(block["text"], max(0, budget - kept))
+            self.note("cut", int(len(body) < len(block["text"])))
+            kept += len(body)
+            if body:
+                fitted.append({**block, "text": body})
+        return fitted, kept
+
+
+# --- PostToolUse: result shapes -------------------------------------------------------------
+
+
+def is_text_block(block) -> bool:
+    return (
+        isinstance(block, dict)
+        and block.get("type") == "text"
+        and isinstance(block.get("text"), str)
+    )
+
+
+def text_size(response) -> int | None:
+    """Characters of model-visible text, or None for a shape this hook does not rewrite."""
+    if isinstance(response, str):
+        return len(response)
+
+    if isinstance(response, list):
+        return sum(len(block["text"]) for block in response if is_text_block(block))
+
+    return None
+
+
+def describe_changes(changes: dict) -> str:
+    parts = []
+    for kind, singular, plural in CHANGE_NAMES:
+        count = changes.get(kind, 0)
+        if count:
+            parts.append("%d %s" % (count, singular if count == 1 else plural))
+    return ", ".join(parts)
+
+
+def build_header(original: int, new: int, path: str, changes: dict) -> str:
+    header = (
+        f"{HEADER_TAG} trimmed {original} -> {new} chars; full result: {path} "
+        "(read it with the Read tool if you need the rest)."
+    )
+    described = describe_changes(changes)
+    if described:
+        header += f" Lossy edits: {described}."
+    return header
+
+
+def with_header(response, header: str):
+    if isinstance(response, str):
+        return header + "\n" + response
+    return [{"type": "text", "text": header}, *response]
+
+
+# --- PostToolUse: saving the full copy ------------------------------------------------------
+
+
+def safe_name(value, fallback: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_.-]", "_", str(value or ""))[:120].strip(".")
+    return cleaned or fallback
+
+
+def full_output_root() -> str:
+    return os.path.join(os.path.expanduser("~"), ".claude", "tool-output-full")
+
+
+def save_full_copy(payload: dict, response) -> str:
+    session = safe_name(payload.get("session_id"), "unknown-session")
+    tool_use = safe_name(payload.get("tool_use_id"), "call-%d" % int(time.time() * 1000))
+
+    directory = os.path.join(full_output_root(), session)
+    os.makedirs(directory, mode=0o700, exist_ok=True)
+    path = os.path.join(directory, tool_use + ".json")
+
+    record = {
+        "tool_name": payload.get("tool_name"),
+        "tool_use_id": payload.get("tool_use_id"),
+        "session_id": payload.get("session_id"),
+        "saved_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+        "tool_input": payload.get("tool_input"),
+        "tool_response": response,
+    }
+
+    # Full copies hold personal mail and notes: owner-only from the first byte.
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        json.dump(record, handle, ensure_ascii=False)
+    return path
+
+
+def clean_old_copies(keep_days: int) -> None:
+    if keep_days <= 0:
+        return
+
+    cutoff = time.time() - keep_days * 86400
+    root = full_output_root()
+    try:
+        sessions = list(os.scandir(root))
+    except OSError:
+        return
+
+    for session in sessions:
+        if not session.is_dir(follow_symlinks=False):
+            continue
+        try:
+            entries = list(os.scandir(session.path))
+            for entry in entries:
+                if entry.is_file(follow_symlinks=False) and entry.stat().st_mtime < cutoff:
+                    os.unlink(entry.path)
+            if not os.listdir(session.path):
+                os.rmdir(session.path)
+        except OSError:
+            continue
+
+
+def asked_for_html(payload: dict) -> bool:
+    """An explicit FULL_CONTENT means the HTML is wanted: keep it, only trim and cut."""
+    tool_input = payload.get("tool_input")
+    return isinstance(tool_input, dict) and tool_input.get(GMAIL_FORMAT_KEY) == "FULL_CONTENT"
+
+
+def guard_result(payload: dict) -> dict | None:
+    tool_name = payload.get("tool_name") or ""
+    if not tool_name.startswith("mcp__"):
+        return None
+
+    response = payload.get("tool_response")
+    size = text_size(response)
+    max_chars = max(MIN_MAX_CHARS, env_int("MCP_RESULT_GUARD_MAX_CHARS", DEFAULT_MAX_CHARS))
+    if size is None or size <= max_chars:
+        return None
+
+    # The header promises a saved copy, so nothing is trimmed unless the save succeeds.
+    path = save_full_copy(payload, response)
+    clean_old_copies(env_int("MCP_RESULT_GUARD_KEEP_DAYS", DEFAULT_KEEP_DAYS))
+
+    # Sized with the original size and every kind of edit, the header always fits the budget.
+    worst_changes = {kind: size for kind, _, _ in CHANGE_NAMES}
+    budget = max(0, max_chars - len(build_header(size, size, path, worst_changes)) - 1)
+
+    scrubber = Scrubber(asked_for_html(payload), MAIL_TOOL.search(tool_name) is not None)
+    trimmed, new_chars = scrubber.fit(scrubber.response(response), budget)
+    trimmed = with_header(trimmed, build_header(size, new_chars, path, scrubber.changes))
+
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PostToolUse",
+            "updatedToolOutput": trimmed,
+        }
+    }
+
+
+def main() -> None:
+    if env_flag("MCP_RESULT_GUARD_OFF"):
+        return
+
+    try:
+        payload = json.load(sys.stdin)
+        if not isinstance(payload, dict):
+            return
+
+        event = payload.get("hook_event_name")
+        if event == "PreToolUse":
+            output = rewrite_gmail_input(payload)
+        elif event == "PostToolUse":
+            output = guard_result(payload)
+        else:
+            output = None
+
+        if output is not None:
+            sys.stdout.write(json.dumps(output, ensure_ascii=False))
+    except Exception:
+        # Fail open: the original call and result go through unchanged.
+        return
+
+
+if __name__ == "__main__":
+    main()

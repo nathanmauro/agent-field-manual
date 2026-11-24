@@ -162,6 +162,20 @@ run_check "python syntax: codex runner" \
 run_check "python syntax: prose placeholders" \
   py_syntax scripts/prose-placeholders.py
 
+run_check "python syntax: mcp result guard" \
+  py_syntax hooks/mcp-result-guard/mcp-result-guard
+run_check "python syntax: tool stats" \
+  py_syntax scripts/tool-stats/tools.py
+run_check "python syntax: lean tools lib" \
+  py_syntax tools/lib/lean.py
+run_check "python syntax: mcp inventory" \
+  py_syntax tools/mcp-inventory
+
+run_check "mcp result guard test: rewrite and trim" \
+  bash hooks/mcp-result-guard/tests/test.sh
+run_check "lean tools test: offline contract" \
+  bash tools/tests/test.sh
+
 run_check "codex runner test: offline contract" \
   bash scripts/tests/test-codex-runner.sh
 run_check "audit test: patterns and placeholder exits" \

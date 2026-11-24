@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tool statistics · all transcripts</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #111110;
+    --surface-1: #1a1a19;
+    --surface-2: #232321;
+    --line: #34332f;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8b8a82;
+    --bar: #3987e5;
+    --flag: #c98500;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font: 13px/1.45 -apple-system, "Inter", system-ui, sans-serif;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+  }
+  header { padding: 12px 18px 10px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 15px; margin: 0 0 4px; }
+  .stats { display: flex; flex-wrap: wrap; gap: 4px 22px; color: var(--text-secondary); font-size: 12px; }
+  .stats b { color: var(--text-primary); font-family: var(--mono); font-weight: 600; }
+  .controls { display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  input[type=search] { background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font: inherit; width: 240px; }
+  select, button { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font: inherit; cursor: pointer; }
+  label { color: var(--text-secondary); font-size: 12px; display: flex; gap: 5px; align-items: center; }
+  .muted { color: var(--text-muted); font-size: 11px; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); min-height: 0; }
+  .tablewrap { overflow: auto; border-right: 1px solid var(--line); }
+  table { border-collapse: collapse; width: 100%; }
+  th {
+    position: sticky; top: 0; background: var(--bg); z-index: 1;
+    text-align: right; font-weight: 600; font-size: 11px; color: var(--text-secondary);
+    padding: 8px 10px; border-bottom: 1px solid var(--line); cursor: pointer; white-space: nowrap; user-select: none;
+  }
+  th.l, td.l { text-align: left; }
+  th.on { color: var(--text-primary); }
+  th.on::after { content: attr(data-dir); margin-left: 4px; }
+  td { padding: 5px 10px; text-align: right; font-family: var(--mono); font-size: 12px; border-bottom: 1px solid #1f1f1d; white-space: nowrap; }
+  td.l { font-family: inherit; font-size: 13px; }
+  tr.tool { cursor: pointer; }
+  tr.tool:hover td { background: var(--surface-1); }
+  tr.tool.on td { background: var(--surface-2); }
+  tr.group td { background: #151514; color: var(--text-secondary); font-weight: 600; padding-top: 10px; cursor: pointer; }
+  tr.group td.l { font-family: inherit; }
+  .share { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+  .share .b { height: 6px; border-radius: 3px; background: var(--bar); }
+  .flag { color: var(--flag); }
+  .cat { color: var(--text-muted); font-size: 11px; }
+  .detail { overflow: auto; padding: 14px 18px 60px; }
+  .detail h2 { font-size: 15px; margin: 0 0 2px; word-break: break-all; }
+  .facts { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--text-secondary); font-family: var(--mono); font-size: 12px; margin: 6px 0 10px; }
+  .defaults { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+  .defaults code { font-family: var(--mono); background: var(--surface-1); padding: 1px 5px; border-radius: 4px; }
+  .sample { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; background: #141413; }
+  .sample.flagged { border-color: #6b4a00; }
+  .srow { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; font-size: 12px; }
+  .srow .tk { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+  .srow .est { color: var(--text-muted); font-size: 11px; }
+  .srow a { color: var(--bar); margin-left: auto; }
+  .badge { display: inline-block; font-size: 11px; border: 1px solid #6b4a00; color: var(--flag); border-radius: 4px; padding: 0 6px; margin: 4px 6px 0 0; }
+  pre { margin: 6px 0 0; padding: 6px 8px; background: var(--surface-1); border-radius: 6px; font: 11px/1.45 var(--mono); color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow: auto; }
+  details summary { cursor: pointer; color: var(--text-muted); font-size: 11px; margin-top: 4px; }
+  .empty { color: var(--text-muted); padding: 30px 0; }
+  .tabs { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .tabs h1 { margin: 0 0 0 10px; }
+  .tab.on { border-color: var(--bar); }
+  .note { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .note b { color: var(--text-primary); font-family: var(--mono); }
+  .libview { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+  .libview[hidden] { display: none; }
+  .libhead { padding: 10px 18px; color: var(--text-secondary); font-size: 12px; border-bottom: 1px solid var(--line); }
+  #libTbl td.desc { font-family: inherit; color: var(--text-secondary); white-space: normal; text-align: left; max-width: 520px; }
+  #libTbl tr.total td { font-weight: 600; border-top: 1px solid var(--line); color: var(--text-primary); }
+</style>
+</head>
+<body>
+<header>
+  <div class="tabs">
+    <button class="tab on" data-tab="tools">Tools</button>
+    <button class="tab" data-tab="library">Library</button>
+    <h1>Tool statistics · every Claude and Codex transcript on disk</h1>
+  </div>
+  <div class="stats" id="stats">loading tools.json…</div>
+  <div class="note" id="note"></div>
+  <div class="controls" id="toolControls">
+    <input type="search" id="q" placeholder="filter tools or servers">
+    <select id="src">
+      <option value="all">Claude + Codex</option>
+      <option value="claude">Claude only</option>
+      <option value="codex">Codex only</option>
+    </select>
+    <label><input type="checkbox" id="group" checked> group by server</label>
+    <label><input type="checkbox" id="flaggedOnly"> flagged tools only</label>
+    <span class="muted">Click a column to sort · click a tool for sample calls</span>
+  </div>
+</header>
+<div class="cols" id="toolsView">
+  <div class="tablewrap"><table id="tbl"></table></div>
+  <div class="detail" id="detail"><div class="empty">Pick a tool.</div></div>
+</div>
+<div class="libview" id="libView" hidden>
+  <div class="libhead" id="libHead">loading the script library…</div>
+  <div class="tablewrap"><table id="libTbl"></table></div>
+</div>
+<script>
+const COLS = [
+  { key: "name", label: "Tool", l: true },
+  { key: "category", label: "Category", l: true },
+  { key: "tokens", label: "Total tokens" },
+  { key: "avg", label: "Avg / call" },
+  { key: "max", label: "Max" },
+  { key: "calls", label: "Calls" },
+  { key: "share", label: "Share of tool results" },
+  { key: "flagged", label: "Flagged" },
+  { key: "measuredShare", label: "Measured" },
+];
+const fmt = (n) => Math.round(n).toLocaleString();
+const k = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : String(Math.round(n));
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+
+let DATA, sortKey = "tokens", sortDir = -1, selected = null, sampleSort = "tokens", collapsed = new Set();
+
+function view() {
+  const q = document.getElementById("q").value.toLowerCase();
+  const src = document.getElementById("src").value;
+  const flaggedOnly = document.getElementById("flaggedOnly").checked;
+  return DATA.tools.filter((t) =>
+    (!q || (t.name + " " + t.server + " " + t.category).toLowerCase().includes(q)) &&
+    (src === "all" || t[src] > 0) &&
+    (!flaggedOnly || t.flagged > 0));
+}
+
+function cmp(a, b) {
+  const x = a[sortKey], y = b[sortKey];
+  return (typeof x === "string" ? x.localeCompare(y) : x - y) * sortDir;
+}
+
+function row(t, maxShare) {
+  const tr = document.createElement("tr");
+  tr.className = "tool" + (selected === t ? " on" : "");
+  tr.innerHTML = `
+    <td class="l">${esc(t.name)}</td>
+    <td class="l cat">${t.category}</td>
+    <td>${k(t.tokens)}</td>
+    <td>${fmt(t.avg)}</td>
+    <td>${k(t.max)}</td>
+    <td>${fmt(t.calls)}</td>
+    <td><div class="share"><span>${(100 * t.share).toFixed(t.share < 0.001 ? 2 : 1)}%</span><div class="b" style="width:${Math.max(1, 70 * t.share / maxShare)}px"></div></div></td>
+    <td class="${t.flagged ? "flag" : ""}">${t.flagged ? fmt(t.flagged) : ""}</td>
+    <td>${Math.round(100 * t.measuredShare)}%</td>`;
+  tr.onclick = () => { selected = t; draw(); showTool(t); };
+  return tr;
+}
+
+function draw() {
+  const tbl = document.getElementById("tbl");
+  const tools = view().sort(cmp);
+  const maxShare = Math.max(...tools.map((t) => t.share), 1e-9);
+  tbl.innerHTML = "<thead><tr>" + COLS.map((c) =>
+    `<th class="${c.l ? "l" : ""} ${c.key === sortKey ? "on" : ""}" data-k="${c.key}" data-dir="${sortDir < 0 ? "▾" : "▴"}">${c.label}</th>`).join("") + "</tr></thead>";
+  const body = document.createElement("tbody");
+
+  if (document.getElementById("group").checked) {
+    const groups = new Map();
+    for (const t of tools) {
+      if (!groups.has(t.server)) groups.set(t.server, []);
+      groups.get(t.server).push(t);
+    }
+    // Order servers by the same column, summed (or the best member for text columns).
+    const agg = (list) => {
+      const sum = (f) => list.reduce((a, t) => a + t[f], 0);
+      const calls = sum("calls"), tokens = sum("tokens");
+      return { name: list[0].server, category: list[0].category, tokens, calls, avg: tokens / calls,
+        max: Math.max(...list.map((t) => t.max)), share: sum("share"), flagged: sum("flagged"),
+        measuredShare: list.reduce((a, t) => a + t.measuredShare * t.calls, 0) / calls };
+    };
+    const ordered = [...groups.entries()].map(([s, list]) => [s, list, agg(list)])
+      .sort((a, b) => cmp(a[2], b[2]));
+    for (const [server, list, g] of ordered) {
+      const tr = document.createElement("tr");
+      tr.className = "group";
+      tr.innerHTML = `
+        <td class="l">${collapsed.has(server) ? "▸" : "▾"} ${esc(server)} <span class="cat">· ${list.length} tool${list.length === 1 ? "" : "s"}</span></td>
+        <td class="l cat"></td><td>${k(g.tokens)}</td><td>${fmt(g.avg)}</td><td>${k(g.max)}</td>
+        <td>${fmt(g.calls)}</td><td>${(100 * g.share).toFixed(1)}%</td>
+        <td class="${g.flagged ? "flag" : ""}">${g.flagged ? fmt(g.flagged) : ""}</td><td>${Math.round(100 * g.measuredShare)}%</td>`;
+      tr.onclick = () => { collapsed.has(server) ? collapsed.delete(server) : collapsed.add(server); draw(); };
+      body.appendChild(tr);
+      if (!collapsed.has(server)) list.forEach((t) => body.appendChild(row(t, maxShare)));
+    }
+  } else {
+    tools.forEach((t) => body.appendChild(row(t, maxShare)));
+  }
+  tbl.appendChild(body);
+  tbl.querySelectorAll("th").forEach((th) => th.onclick = () => {
+    const key = th.dataset.k;
+    if (key === sortKey) sortDir = -sortDir;
+    else { sortKey = key; sortDir = typeof DATA.tools[0][key] === "string" ? 1 : -1; }
+    draw();
+  });
+}
+
+function showTool(t) {
+  const d = document.getElementById("detail");
+  const defaults = Object.entries(t.defaults || {});
+  const samples = [...t.samples].sort((a, b) =>
+    sampleSort === "tokens" ? b.tokens - a.tokens :
+    sampleSort === "flagged" ? (b.flags.length - a.flags.length) || (b.tokens - a.tokens) :
+    b.ts.localeCompare(a.ts));
+  d.innerHTML = `
+    <h2>${esc(t.full)}</h2>
+    <div class="muted">${esc(t.server)} · ${t.category}</div>
+    <div class="facts">
+      <span>${fmt(t.calls)} calls (${fmt(t.claude)} Claude, ${fmt(t.codex)} Codex)</span>
+      <span>${k(t.tokens)} tok total</span><span>avg ${fmt(t.avg)}</span><span>max ${fmt(t.max)}</span>
+      <span>${(100 * t.share).toFixed(2)}% of all tool results</span>
+      <span>${fmt(t.errors)} errors</span>
+      ${t.flagged ? `<span class="flag">${fmt(t.flagged)} flagged · ${k(t.flagTokens)} tok</span>` : ""}
+    </div>
+    ${defaults.length ? `<div class="defaults">Schema defaults: ${defaults.map(([a, v]) => `<code>${esc(a)} = ${esc(v)}</code>`).join(" ")}</div>` : ""}
+    <div class="controls" style="margin:0 0 10px">
+      <span class="muted">${samples.length} sample calls (largest, flagged, latest) · sort</span>
+      <select id="ssort">
+        <option value="tokens" ${sampleSort === "tokens" ? "selected" : ""}>by size</option>
+        <option value="flagged" ${sampleSort === "flagged" ? "selected" : ""}>flagged first</option>
+        <option value="ts" ${sampleSort === "ts" ? "selected" : ""}>latest first</option>
+      </select>
+    </div>
+    <div id="samples"></div>`;
+  d.querySelector("#ssort").onchange = (e) => { sampleSort = e.target.value; showTool(t); };
+  const box = d.querySelector("#samples");
+  for (const s of samples) {
+    const div = document.createElement("div");
+    div.className = "sample" + (s.flags.length ? " flagged" : "");
+    const when = s.ts ? new Date(s.ts).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+    div.innerHTML = `
+      <div class="srow">
+        <span class="tk">${fmt(s.tokens)} tok</span>
+        <span class="est">${s.measured ? "measured" : "≈ chars/3"}</span>
+        <span class="muted">${s.src} · ${when}${s.error ? " · error" : ""}</span>
+        ${s.replay ? `<a href="${esc(s.replay)}" target="_blank">open in replay →</a>` : `<span class="muted" style="margin-left:auto">no replay (Codex)</span>`}
+      </div>
+      <div>${s.flags.map((f) => `<span class="badge" title="${esc(f.kind)}">${esc(f.note)}</span>`).join("")}</div>
+      <div class="muted" style="margin-top:3px;word-break:break-all">${esc(s.file)}</div>
+      <pre>${esc(s.input)}</pre>
+      <details><summary>result preview (${fmt(s.chars)} chars)</summary><pre>${esc(s.preview)}</pre></details>`;
+    box.appendChild(div);
+  }
+  d.scrollTop = 0;
+}
+
+["q", "src", "group", "flaggedOnly"].forEach((id) => document.getElementById(id).addEventListener("input", draw));
+
+// ---------- Library tab: a shared script library CLI ($TOOL_LIBRARY_CLI) ----------
+
+let LIB = null, libSort = "saved", libDir = -1;
+const norm = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k.toLowerCase().replace(/[^a-z]/g, ""), v]));
+const pickField = (o, ...names) => names.map((n) => o[n]).find((v) => v !== undefined && v !== null);
+
+function parseList(text) {
+  // `$TOOL_LIBRARY_CLI list`: one tool per line, name then a one-line description.
+  const desc = {};
+  for (const line of (text || "").split("\n")) {
+    const m = line.trim().match(/^([\w.:-]+)\s*(?:[-–—:|]\s*|\s{2,}|\t)(.*)$/);
+    if (m) desc[m[1]] = m[2].trim();
+    else if (line.trim()) desc[line.trim().split(/\s+/)[0]] = line.trim().split(/\s+/).slice(1).join(" ");
+  }
+  return desc;
+}
+
+function libRows(lib) {
+  const raw = lib.stats.tools || lib.stats;
+  const entries = Array.isArray(raw) ? raw.map((t) => [t.name || t.tool, t]) : Object.entries(raw);
+  const desc = parseList(lib.list);
+  return entries.map(([name, t]) => {
+    const n = norm(t);
+    const clients = pickField(n, "clients", "client");
+    return {
+      name,
+      desc: pickField(n, "desc", "description") || desc[name] || "",
+      runs: +pickField(n, "runs", "count", "calls") || 0,
+      last: pickField(n, "lastrun", "lastrunat", "last", "lastts") || "",
+      clients: Array.isArray(clients) ? clients.join(", ") : typeof clients === "object" && clients ? Object.entries(clients).map(([c, v]) => `${c} ${v}`).join(", ") : String(clients ?? ""),
+      saved: +pickField(n, "savedtokens", "savedtokensestimate", "estsavedtokens", "saved") || 0,
+    };
+  });
+}
+
+function drawLibrary() {
+  const head = document.getElementById("libHead");
+  const tbl = document.getElementById("libTbl");
+  if (!LIB) return;
+  if (!LIB.available) {
+    head.innerHTML = `The shared script library isn't available yet: <span class="flag">${esc(LIB.error)}</span>. ` +
+      `This tab reads <code>$TOOL_LIBRARY_CLI stats --json</code> and <code>$TOOL_LIBRARY_CLI list</code> when a library is installed.`;
+    tbl.innerHTML = "";
+    return;
+  }
+  const rows = libRows(LIB).sort((a, b) => {
+    const x = a[libSort], y = b[libSort];
+    return (typeof x === "string" ? String(x).localeCompare(String(y)) : x - y) * libDir;
+  });
+  const total = rows.reduce((a, r) => ({ runs: a.runs + r.runs, saved: a.saved + r.saved }), { runs: 0, saved: 0 });
+  head.innerHTML = `${rows.length} library tools · ${fmt(total.runs)} runs · <b>~${k(total.saved)}</b> tokens saved ` +
+    `<span class="muted">(estimate from the library CLI: raw output avoided vs stdout returned)</span>`;
+  const cols = [["name", "Tool", 1], ["desc", "Description", 1], ["runs", "Runs"], ["last", "Last run", 1], ["clients", "Clients", 1], ["saved", "Est. tokens saved"]];
+  tbl.innerHTML = "<thead><tr>" + cols.map(([key, label, l]) =>
+    `<th class="${l ? "l" : ""} ${key === libSort ? "on" : ""}" data-k="${key}" data-dir="${libDir < 0 ? "▾" : "▴"}">${label}</th>`).join("") + "</tr></thead>";
+  const body = document.createElement("tbody");
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    const last = r.last ? new Date(isNaN(+r.last) ? r.last : +r.last * (String(r.last).length <= 10 ? 1000 : 1)).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+    tr.innerHTML = `<td class="l">${esc(r.name)}</td><td class="desc">${esc(r.desc)}</td><td>${fmt(r.runs)}</td>` +
+      `<td class="l">${esc(last)}</td><td class="l">${esc(r.clients)}</td><td>~${fmt(r.saved)}</td>`;
+    body.appendChild(tr);
+  }
+  const tr = document.createElement("tr");
+  tr.className = "total";
+  tr.innerHTML = `<td class="l">Total</td><td class="desc"></td><td>${fmt(total.runs)}</td><td></td><td></td><td>~${fmt(total.saved)}</td>`;
+  body.appendChild(tr);
+  tbl.appendChild(body);
+  tbl.querySelectorAll("th").forEach((th) => th.onclick = () => {
+    if (th.dataset.k === libSort) libDir = -libDir;
+    else { libSort = th.dataset.k; libDir = ["name", "desc", "last", "clients"].includes(libSort) ? 1 : -1; }
+    if (libSort === "last") libDir = th.dataset.k === "last" ? libDir : -1;
+    drawLibrary();
+  });
+}
+
+function setTab(tab) {
+  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+  document.getElementById("toolsView").hidden = tab !== "tools";
+  document.getElementById("toolsView").style.display = tab === "tools" ? "" : "none";
+  document.getElementById("toolControls").style.display = tab === "tools" ? "" : "none";
+  document.getElementById("libView").hidden = tab !== "library";
+  if (tab === "library") {
+    fetch("/api/library").then((r) => r.json()).then((d) => { LIB = d; drawLibrary(); })
+      .catch((e) => { LIB = { available: false, error: e.message }; drawLibrary(); });
+  }
+}
+document.querySelectorAll(".tab").forEach((b) => b.onclick = () => setTab(b.dataset.tab));
+
+fetch("tools.json").then((r) => r.json()).then((d) => {
+  DATA = d;
+  const flagged = d.tools.reduce((a, t) => a + t.flagged, 0);
+  const flagTok = d.tools.reduce((a, t) => a + t.flagTokens, 0);
+  document.getElementById("stats").innerHTML = [
+    `<span><b>${fmt(d.files)}</b> transcripts</span>`,
+    `<span><b>${fmt(d.calls)}</b> tool calls</span>`,
+    `<span><b>${d.tools.length}</b> tools</span>`,
+    `<span><b>${k(d.toolTokens)}</b> tokens of tool results</span>`,
+    `<span>Claude tool results = <b>${Math.round(100 * d.claudeToolTokens / d.contextAdded)}%</b> of all Claude context added (${k(d.contextAdded)})</span>`,
+    `<span class="flag"><b>${fmt(flagged)}</b> flagged calls · ${k(flagTok)} tok</span>`,
+    `<span class="muted">scanned ${d.generated} in ${d.seconds}s</span>`,
+  ].join("");
+  const shareOf = (pred) => d.tools.filter(pred).reduce((a, t) => a + t.tokens, 0) / d.toolTokens;
+  const pct = (x) => (100 * x).toFixed(1) + "%";
+  const builtin = (n) => (t) => t.name === n && t.server.endsWith("built-in");
+  document.getElementById("note").innerHTML =
+    `All MCP tools together are <b>${pct(shareOf((t) => t.category === "mcp"))}</b> of tool-result tokens; ` +
+    `Bash is <b>${pct(shareOf(builtin("Bash")))}</b> and Read <b>${pct(shareOf(builtin("Read")))}</b>. ` +
+    `Trimming connectors helps at the margin; shell and file output is where the context goes.`;
+  draw();
+  if (new URLSearchParams(location.search).get("tab") === "library") setTab("library");
+  const want = new URLSearchParams(location.search).get("tool");
+  const pick = d.tools.find((t) => t.full === want || t.name === want);
+  if (pick) { selected = pick; draw(); showTool(pick); }
+});
+</script>
+</body>
+</html>

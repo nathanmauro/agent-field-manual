@@ -1,0 +1,1 @@
+{"nextPageToken": "p2", "files": [{"id": "f1", "name": "Plan doc", "mimeType": "application/vnd.google-apps.document", "modifiedTime": "2026-11-20T10:00:00Z", "owners": [{"emailAddress": "sam@example.com"}]}, {"id": "f2", "name": "Budget", "mimeType": "application/vnd.google-apps.spreadsheet", "modifiedTime": "2026-11-19T10:00:00Z"}]}

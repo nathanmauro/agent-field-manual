@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+# desc: Read a Drive file by id or URL as text: Docs as plain text, Sheets as TSV of a range.
+# usage: gdrive-read <id|url> [--range 'Sheet1!A1:F50'] [--offset N] [--max-chars 6000] [--json]
+# effect: read
+# replaces: mcp__claude_ai_Google_Drive__read_file_content mcp__claude_ai_Google_Docs__read_doc mcp__claude_ai_Google_Sheets__get_values mcp__claude_ai_Google_Sheets__get_spreadsheet
+"""Lean replacement for the Drive, Docs and Sheets connectors' read calls.
+
+Docs export to plain text through Drive (no structural JSON); Sheets return only the cell values
+of one range as TSV. --offset and --max-chars page through long documents.
+"""
+
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+# Keep __pycache__ out of the shared library checkout.
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib"))
+
+import lean  # noqa: E402
+
+
+FIELDS = ["id", "kind", "name", "modified", "chars"]
+DEFAULT_FIELDS = ["kind", "name", "modified", "chars"]
+DOC_CAP = 6000
+
+EXPORT_AS = {
+    "application/vnd.google-apps.document": "text/plain",
+    "application/vnd.google-apps.presentation": "text/plain",
+}
+SHEET = "application/vnd.google-apps.spreadsheet"
+TEXTUAL = ("text/", "application/json", "application/xml", "application/javascript")
+
+
+def main():
+    p = lean.parser(__doc__.splitlines()[0], DEFAULT_FIELDS, FIELDS)
+    p.add_argument("target", help="file id or any Drive/Docs/Sheets URL")
+    p.add_argument("--range", help="Sheets A1 range; default: the first sheet, first 100 rows")
+    p.add_argument("--offset", type=int, default=0, help="skip this many chars of the text")
+    p.set_defaults(max_chars=DOC_CAP)
+
+    args = p.parse_args()
+
+    file_id = _file_id(args.target)
+    meta = lean.gws(
+        "drive",
+        "files",
+        "get",
+        params={"fileId": file_id, "fields": "id,name,mimeType,modifiedTime"},
+    )
+    mime = meta.get("mimeType", "")
+
+    if mime == SHEET:
+        text = _sheet_tsv(file_id, args.range)
+    elif mime in EXPORT_AS:
+        text = _download("export", file_id, EXPORT_AS[mime])
+    elif mime.startswith(TEXTUAL):
+        text = _download("get", file_id, None)
+    else:
+        raise lean.ToolError(f"{mime} is not text; open it in Drive or download it with gws")
+
+    total = len(text)
+    body = text[args.offset :]
+    cut = args.max_chars and len(body) > args.max_chars
+
+    if cut:
+        body = body[: args.max_chars]
+
+    header = {
+        "id": file_id,
+        "kind": mime.rsplit(".", 1)[-1].rsplit("/", 1)[-1],
+        "name": meta.get("name", ""),
+        "modified": meta.get("modifiedTime", "")[:10],
+        "chars": total,
+    }
+    fields = lean.selected_fields(args, FIELDS)
+
+    lean.emit_blocks([({f: header[f] for f in fields}, body)], args)
+
+    if cut:
+        nxt = args.offset + args.max_chars
+        note = f"# {total - nxt} more chars: --offset {nxt}"
+        print(note, file=sys.stderr)
+
+
+def _file_id(target):
+    match = re.search(r"/d/([A-Za-z0-9_-]{20,})", target) or re.search(
+        r"[?&]id=([A-Za-z0-9_-]{20,})", target
+    )
+
+    return match.group(1) if match else target
+
+
+def _download(method, file_id, mime):
+    """Drive media comes back as bytes, so gws writes it to a temp file we read as text."""
+    params = {"fileId": file_id}
+
+    if mime:
+        params["mimeType"] = mime
+    else:
+        params["alt"] = "media"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        # gws only writes --output inside its working directory, so run it from tmp.
+        out = os.path.join(tmp, "body")
+        cmd = [
+            "gws",
+            "drive",
+            "files",
+            method,
+            "--params",
+            lean.json.dumps(params),
+            "--output",
+            "body",
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=tmp)
+
+        if proc.returncode != 0 or not os.path.exists(out):
+            raise lean.ToolError("gws download failed: " + lean.cap(proc.stderr, 200))
+
+        with open(out, "rb") as fh:
+            raw = fh.read()
+
+    lean.count_raw(len(raw))
+    text = raw.decode("utf-8-sig", "replace").replace("\r\n", "\n")
+
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
+def _sheet_tsv(file_id, cell_range):
+    if not cell_range:
+        info = lean.gws(
+            "sheets",
+            "spreadsheets",
+            "get",
+            params={"spreadsheetId": file_id, "fields": "sheets.properties.title"},
+        )
+        first = info["sheets"][0]["properties"]["title"]
+        cell_range = f"'{first}'!A1:Z100"
+
+    values = lean.gws(
+        "sheets",
+        "spreadsheets",
+        "values",
+        "get",
+        params={"spreadsheetId": file_id, "range": cell_range},
+    )
+
+    rows = values.get("values", [])
+    lines = ["\t".join(str(c).replace("\t", " ").replace("\n", " ") for c in r) for r in rows]
+
+    return f"# range {values.get('range', cell_range)}\n" + "\n".join(lines)
+
+
+if __name__ == "__main__":
+    lean.main(main)

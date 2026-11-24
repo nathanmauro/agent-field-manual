@@ -1,0 +1,1 @@
+{"data": {"issues": {"pageInfo": {"hasNextPage": false}, "nodes": [{"identifier": "ABC-1", "title": "First issue", "priorityLabel": "High", "updatedAt": "2026-11-22T00:00:00Z", "dueDate": null, "url": "https://linear.example/ABC-1", "state": {"name": "Todo"}, "project": {"name": "Demo"}, "assignee": null, "labels": {"nodes": [{"name": "bug"}]}}]}}}

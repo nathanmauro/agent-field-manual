@@ -1,0 +1,38 @@
+{
+  "_comment": "Map from MCP servers and tools to what you really use them for and the lean path that replaces them. Copy to mcp-equivalents.json and edit. Keys are 'server' or 'server|tool' (server as it appears in tool-stats/tools.json, without the 'mcp · ' prefix); the most specific key wins. A library tool's own '# replaces:' header takes precedence. verdict: replaced (a library tool covers it), use-cli (an existing CLI already does it lean), fix-source (your own server; fix its output shape), keep (needs eyes, images or a domain server), retired (you no longer use it).",
+  "aliases": {
+    "desktop-gmail-connector": "claude.ai Gmail"
+  },
+  "map": {
+    "claude.ai Gmail": {
+      "verdict": "use-cli",
+      "use": "Mail writes: send, reply, drafts, labels.",
+      "lean": "gws gmail +send/+reply --draft"
+    },
+    "claude.ai Gmail|search_threads": {
+      "verdict": "keep",
+      "use": "Inbox searches.",
+      "lean": ""
+    },
+    "claude.ai Google_Calendar": {
+      "verdict": "replaced",
+      "use": "Agenda reads.",
+      "lean": "gcal-agenda"
+    },
+    "github": {
+      "verdict": "use-cli",
+      "use": "Issues, PRs, files.",
+      "lean": "gh"
+    },
+    "memory": {
+      "verdict": "fix-source",
+      "use": "Your own memory server: recall and session listings.",
+      "lean": "trim the server's default result size"
+    },
+    "claude-in-chrome": {
+      "verdict": "keep",
+      "use": "Browsing and screenshots; needs eyes.",
+      "lean": ""
+    }
+  }
+}

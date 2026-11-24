@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+# desc: Read one Gmail thread as plain text: who, when, and each body with quoted history cut.
+# usage: gmail-thread <thread-id> [--last N] [--no-body] [--max-chars 1500] [--json] [--fields ...]
+# effect: read
+# replaces: mcp__claude_ai_Gmail__get_thread mcp__claude_ai_Gmail__get_message
+"""Lean replacement for the Gmail connector's get_thread.
+
+The connector returns every message's HTML body; a one-sentence LinkedIn message came back as
+35,887 characters, nearly all markup. This decodes the text/plain part (or strips the HTML), cuts the quoted
+history each reply repeats, and caps each body.
+"""
+
+import base64
+import os
+import sys
+
+# Keep __pycache__ out of the shared library checkout.
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib"))
+
+import lean  # noqa: E402
+
+
+FIELDS = ["date", "from", "to", "subject", "id", "labels"]
+DEFAULT_FIELDS = ["date", "from", "subject"]
+BODY_CAP = 1500
+
+
+def main():
+    p = lean.parser(__doc__.splitlines()[0], DEFAULT_FIELDS, FIELDS)
+    p.add_argument("thread_id")
+    p.add_argument("--last", type=int, default=0, help="only the last N messages")
+    p.add_argument("--no-body", action="store_true", help="headers only")
+    p.set_defaults(max_chars=BODY_CAP)
+
+    args = p.parse_args()
+
+    thread = lean.gws(
+        "gmail",
+        "users",
+        "threads",
+        "get",
+        params={"userId": "me", "id": args.thread_id, "format": "full"},
+    )
+
+    messages = thread.get("messages", [])
+
+    if args.last:
+        messages = messages[-args.last :]
+
+    fields = lean.selected_fields(args, FIELDS)
+
+    blocks = []
+
+    for message in messages:
+        header = _headers(message)
+        picked = {name: header.get(name, "") for name in fields}
+        body = "" if args.no_body else _body(message, args.max_chars)
+
+        blocks.append((picked, body))
+
+    lean.emit_blocks(blocks, args)
+
+
+def _headers(message):
+    raw = {h["name"].lower(): h["value"] for h in message.get("payload", {}).get("headers", [])}
+
+    return {
+        "date": raw.get("date", ""),
+        "from": raw.get("from", ""),
+        "to": raw.get("to", ""),
+        "subject": raw.get("subject", ""),
+        "id": message.get("id", ""),
+        "labels": message.get("labelIds", []),
+    }
+
+
+def _body(message, limit):
+    plain, markup = _find_parts(message.get("payload", {}))
+
+    text = plain if plain.strip() else lean.html_to_text(markup)
+    text = lean.short_urls(lean.strip_quoted(text))
+
+    if limit and len(text) > limit:
+        text = text[: limit - 1].rstrip() + "…"
+
+    return text
+
+
+def _find_parts(part):
+    """Depth-first: the first text/plain and first text/html bodies in the MIME tree."""
+    plain = ""
+    markup = ""
+    mime = part.get("mimeType", "")
+    data = part.get("body", {}).get("data")
+
+    if data and mime == "text/plain":
+        plain = _decode(data)
+    elif data and mime == "text/html":
+        markup = _decode(data)
+
+    for child in part.get("parts", []) or []:
+        child_plain, child_markup = _find_parts(child)
+        plain = plain or child_plain
+        markup = markup or child_markup
+
+    return plain, markup
+
+
+def _decode(data):
+    padded = data + "=" * (-len(data) % 4)
+
+    return base64.urlsafe_b64decode(padded).decode("utf-8", "replace")
+
+
+if __name__ == "__main__":
+    lean.main(main)

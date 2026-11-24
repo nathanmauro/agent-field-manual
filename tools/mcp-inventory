@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+"""Rank every MCP tool by context cost and name its lean replacement.
+
+Joins three sources:
+- the transcript stats from ../scripts/tool-stats/tools.py (aggregates only; the private previews and
+  samples are never read into the output);
+- mcp-equivalents.json, your hand-kept "what is it really for, what replaces it" map
+  (start from mcp-equivalents.sample.json);
+- the `# replaces:` headers of the tools in this directory, which win over the map.
+
+  mcp-inventory                 top 40 as a text table
+  mcp-inventory --json          everything
+  mcp-inventory --markdown      a markdown report
+"""
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+TOOLS_DIR = HERE
+MAP_PATH = Path(os.environ.get("MCP_EQUIVALENTS_JSON", HERE / "mcp-equivalents.json"))
+STATS_PATH = Path(
+    os.environ.get(
+        "TOOL_STATS_JSON",
+        HERE.parent / "scripts" / "tool-stats" / "tools.json",
+    )
+)
+VERDICT_ORDER = ["replaced", "use-cli", "fix-source", "retired", "keep", "unmapped"]
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument("--json", action="store_true")
+    mode.add_argument("--markdown", action="store_true")
+    p.add_argument("--top", type=int, default=40)
+    p.add_argument("--stats", type=Path, default=STATS_PATH)
+
+    args = p.parse_args()
+
+    if not args.stats.exists():
+        print(
+            f"no stats at {args.stats}; regenerate with session-journey/tools.py", file=sys.stderr
+        )
+        return 1
+
+    report = build(json.loads(args.stats.read_text()))
+
+    if args.json:
+        json.dump(report, sys.stdout, ensure_ascii=False)
+        sys.stdout.write("\n")
+    elif args.markdown:
+        sys.stdout.write(markdown(report, args.top))
+    else:
+        sys.stdout.write(table(report, args.top))
+
+    return 0
+
+
+# ---------------------------------------------------------------- joining
+
+
+def build(stats):
+    equivalents = json.loads(MAP_PATH.read_text())
+    aliases = equivalents.get("aliases", {})
+    mapping = equivalents["map"]
+    library = library_replacements()
+
+    rows = []
+
+    for tool in stats["tools"]:
+        if tool.get("category") != "mcp":
+            continue
+
+        server = tool["server"].removeprefix("mcp · ")
+        server = aliases.get(server, server)
+        entry = resolve(server, tool["name"], tool["full"], mapping, library)
+
+        rows.append(
+            {
+                "server": server,
+                "tool": tool["name"],
+                "calls": tool["calls"],
+                "tokens": tool["tokens"],
+                "avg": tool["avg"],
+                "p90": tool.get("p90", 0),
+                "max": tool["max"],
+                "claude": tool.get("claude", 0),
+                "codex": tool.get("codex", 0),
+                **entry,
+            }
+        )
+
+    rows = merge_aliased(rows)
+    rows.sort(key=lambda r: -r["tokens"])
+
+    mcp_tokens = sum(r["tokens"] for r in rows)
+    by_verdict = {v: 0 for v in VERDICT_ORDER}
+
+    for row in rows:
+        row["mcp_share"] = round(row["tokens"] / mcp_tokens, 4) if mcp_tokens else 0
+        by_verdict[row["verdict"]] += row["tokens"]
+
+    return {
+        "generated": stats.get("generated"),
+        "transcripts": stats.get("files"),
+        "all_tool_tokens": stats.get("toolTokens"),
+        "mcp_tokens": mcp_tokens,
+        "mcp_calls": sum(r["calls"] for r in rows),
+        "mcp_share_of_all": round(mcp_tokens / stats["toolTokens"], 4),
+        "tokens_by_verdict": by_verdict,
+        "servers": servers(rows),
+        "tools": rows,
+    }
+
+
+def resolve(server, name, full, mapping, library):
+    if full in library:
+        return {"verdict": "replaced", "lean": library[full], "use": use_of(server, name, mapping)}
+
+    entry = mapping.get(f"{server}|{name}") or mapping.get(server)
+
+    if not entry:
+        return {"verdict": "unmapped", "lean": "", "use": ""}
+
+    return {"verdict": entry["verdict"], "lean": entry["lean"], "use": entry["use"]}
+
+
+def use_of(server, name, mapping):
+    entry = mapping.get(f"{server}|{name}") or mapping.get(server) or {}
+    return entry.get("use", "")
+
+
+def library_replacements():
+    """mcp tool full name -> library tool name, from each tool's # replaces: header."""
+    found = {}
+
+    for path in sorted(TOOLS_DIR.iterdir()):
+        if not path.is_file() or not os.access(path, os.X_OK):
+            continue
+
+        for line in path.read_text(errors="replace").splitlines()[:12]:
+            if line.startswith("# replaces:"):
+                for full in line.split(":", 1)[1].split():
+                    found[full] = path.name
+
+    return found
+
+
+def merge_aliased(rows):
+    """Two connector instances (claude.ai and desktop) of one service fold into one row."""
+    merged = {}
+
+    for row in rows:
+        key = (row["server"], row["tool"])
+
+        if key not in merged:
+            merged[key] = row
+            continue
+
+        into = merged[key]
+
+        for field in ("calls", "tokens", "claude", "codex"):
+            into[field] += row[field]
+
+        into["max"] = max(into["max"], row["max"])
+        into["p90"] = max(into["p90"], row["p90"])
+        into["avg"] = into["tokens"] // max(into["calls"], 1)
+
+    return list(merged.values())
+
+
+def servers(rows):
+    totals = {}
+
+    for row in rows:
+        entry = totals.setdefault(row["server"], {"server": row["server"], "calls": 0, "tokens": 0})
+        entry["calls"] += row["calls"]
+        entry["tokens"] += row["tokens"]
+
+    return sorted(totals.values(), key=lambda s: -s["tokens"])
+
+
+# ---------------------------------------------------------------- rendering
+
+
+def table(report, top):
+    lines = [
+        f"MCP: {report['mcp_tokens']:,} result tokens over {report['mcp_calls']:,} calls, "
+        f"{report['mcp_share_of_all']:.1%} of all tool results ({report['transcripts']:,} "
+        "transcripts)",
+        "",
+    ]
+
+    for row in report["tools"][:top]:
+        lines.append(
+            f"{row['tokens']:>9,}  {row['calls']:>5}  {row['avg']:>6}  {row['verdict']:<10}  "
+            f"{row['server'][:20]:<20}  {row['tool'][:26]:<26}  {row['lean']}"
+        )
+
+    return "\n".join(lines) + "\n"
+
+
+def markdown(report, top):
+    out = [
+        "<!-- GENERATED by tools/mcp-inventory --markdown. Edit "
+        "mcp-equivalents.json or a tool's `# replaces:` header, then regenerate. -->",
+        "",
+        "# MCP inventory",
+        "",
+        f"From {report['transcripts']:,} Claude Code and Codex transcripts (stats generated "
+        f"{report['generated']}). MCP results came to {report['mcp_tokens']:,} tokens over "
+        f"{report['mcp_calls']:,} calls, {report['mcp_share_of_all']:.1%} of all tool-result "
+        "tokens. Bash and Read are most of the rest.",
+        "",
+        "Tokens by verdict:",
+        "",
+    ]
+
+    for verdict in VERDICT_ORDER:
+        tokens = report["tokens_by_verdict"][verdict]
+
+        if tokens:
+            share = tokens / report["mcp_tokens"]
+            out.append(f"- **{verdict}**: {tokens:,} ({share:.0%} of MCP)")
+
+    out += [
+        "",
+        "## Servers",
+        "",
+        "| server | calls | tokens |",
+        "| --- | ---: | ---: |",
+    ]
+
+    for server in report["servers"]:
+        if server["tokens"] < 1000:
+            continue
+
+        out.append(f"| {server['server']} | {server['calls']:,} | {server['tokens']:,} |")
+
+    out += [
+        "",
+        f"## Top {top} tools",
+        "",
+        "| tokens | calls | avg | max | tool | really used for | verdict | lean path |",
+        "| ---: | ---: | ---: | ---: | --- | --- | --- | --- |",
+    ]
+
+    for row in report["tools"][:top]:
+        lean = f"`{row['lean']}`" if row["lean"] else ""
+        out.append(
+            f"| {row['tokens']:,} | {row['calls']:,} | {row['avg']:,} | {row['max']:,} | "
+            f"{row['server']} `{row['tool']}` | {row['use']} | {row['verdict']} | {lean} |"
+        )
+
+    return "\n".join(out) + "\n"
+
+
+if __name__ == "__main__":
+    sys.exit(main())

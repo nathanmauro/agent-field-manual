@@ -13,3 +13,5 @@ __pycache__/
 .idea/
 .vscode/
 *.iml
+scripts/tool-stats/tools.json
+tools/mcp-equivalents.json

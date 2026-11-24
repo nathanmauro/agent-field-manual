@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+# desc: Google Drive files matching words or a raw Drive query, one line each (id, kind, modified, name).
+# usage: gdrive-find <words... | --q "raw drive query"> [--kind doc|sheet|slides|pdf|folder] [--limit 20]
+# effect: read
+# replaces: mcp__claude_ai_Google_Drive__search_files mcp__claude_ai_Google_Drive__list_recent_files
+"""Lean replacement for the Drive connector's search_files.
+
+The connector returns about twelve fields per file (canAddChildren, viewUrl, parentId, owner,
+three timestamps...), about 4.2K tokens per call. Finding a file needs its id, kind and name.
+"""
+
+import os
+import sys
+
+# Keep __pycache__ out of the shared library checkout.
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib"))
+
+import lean  # noqa: E402
+
+
+FIELDS = ["id", "kind", "modified", "name", "owner", "url", "parent"]
+DEFAULT_FIELDS = ["id", "kind", "modified", "name"]
+
+KINDS = {
+    "application/vnd.google-apps.document": "doc",
+    "application/vnd.google-apps.spreadsheet": "sheet",
+    "application/vnd.google-apps.presentation": "slides",
+    "application/vnd.google-apps.folder": "folder",
+    "application/vnd.google-apps.form": "form",
+    "application/pdf": "pdf",
+}
+MIME_BY_KIND = {kind: mime for mime, kind in KINDS.items()}
+
+
+def main():
+    p = lean.parser(__doc__.splitlines()[0], DEFAULT_FIELDS, FIELDS)
+    p.add_argument("words", nargs="*", help="every word must appear in the name")
+    p.add_argument("--q", help="raw Drive query, e.g. \"modifiedTime > '2026-11-01'\"")
+    p.add_argument("--kind", choices=sorted(MIME_BY_KIND))
+    p.add_argument("--fulltext", action="store_true", help="match words in content, not name")
+    p.add_argument("--limit", type=int, default=20)
+    p.set_defaults(max_chars=120)
+
+    args = p.parse_args()
+
+    params = {
+        "q": _query(args),
+        "pageSize": args.limit,
+        "orderBy": "modifiedTime desc",
+        "fields": "nextPageToken,files(id,name,mimeType,modifiedTime,owners(emailAddress),"
+        "webViewLink,parents)",
+    }
+
+    if args.fulltext:
+        # Drive rejects orderBy together with fullText search.
+        params.pop("orderBy")
+
+    listing = lean.gws("drive", "files", "list", params=params)
+    rows = [_row(f) for f in listing.get("files", [])]
+    more = "--limit %d" % (args.limit * 2) if listing.get("nextPageToken") else None
+
+    lean.emit(rows, args, FIELDS, text_fields=("name",), more=more)
+
+
+def _query(args):
+    clauses = ["trashed = false"]
+    key = "fullText" if args.fulltext else "name"
+
+    for word in args.words:
+        escaped = word.replace("\\", "\\\\").replace("'", "\\'")
+        clauses.append(f"{key} contains '{escaped}'")
+
+    if args.kind:
+        clauses.append(f"mimeType = '{MIME_BY_KIND[args.kind]}'")
+
+    if args.q:
+        clauses.append(f"({args.q})")
+
+    if len(clauses) == 1:
+        raise lean.ToolError("give search words, --q, or --kind")
+
+    return " and ".join(clauses)
+
+
+def _row(entry):
+    mime = entry.get("mimeType", "")
+    owners = entry.get("owners") or [{}]
+
+    return {
+        "id": entry["id"],
+        "kind": KINDS.get(mime, mime.rsplit("/", 1)[-1]),
+        "modified": entry.get("modifiedTime", "")[:10],
+        "name": entry.get("name", ""),
+        "owner": owners[0].get("emailAddress", ""),
+        "url": entry.get("webViewLink", ""),
+        "parent": (entry.get("parents") or [""])[0],
+    }
+
+
+if __name__ == "__main__":
+    lean.main(main)
