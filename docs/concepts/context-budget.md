@@ -92,13 +92,14 @@ clean break: a gate on growth since the session's first response, a ceiling on a
 fire-once markers, a frozen predecessor, and a holder protocol so background work survives the
 rotation. Those are design notes from a working private version.
 
-## Next: Code Mode
+## Code Mode, One Run
 
 Claude Code's experimental code mode (`CLAUDE_CODE_EXPERIMENTAL_CODE_MODE=1`) has the model write
 a program that calls its tools, so in principle only the program's return value lands in
 context. As of 2.1.331 it is chosen at session start, turns off Claude in Chrome, computer use and
-Remote Control, and refuses some enterprise setups. It is unmeasured here; it would fit
-data-heavy sessions such as inbox triage.
+Remote Control, and refuses some enterprise setups. One light trial: it saved about 6.8K tokens at session start and nothing while the task ran
+(both runs grew 27.2K), with the same cost and output. One run proves little; it stays a
+per-session opt-in for data-heavy work such as inbox triage.
 
 ## What Isn't Known Yet
 
