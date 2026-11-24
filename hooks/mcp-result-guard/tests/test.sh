@@ -151,7 +151,7 @@ test_post_get_thread_is_trimmed() {
   [ "$size" -lt 5000 ] || fail "trimmed result still $size bytes"
 
   [ -f "$saved" ] || fail "full copy missing: $saved"
-  [ "$(stat -f %Lp "$saved" 2> /dev/null || stat -c %a "$saved")" = "600" ] \
+  [ "$(stat -c %a "$saved" 2> /dev/null || stat -f %Lp "$saved")" = "600" ] \
     || fail "full copy must be owner-only"
   jq -e --slurpfile fixture "$FIXTURES/post-get-thread.json" \
     '.tool_response == $fixture[0].tool_response
